@@ -31,6 +31,7 @@
     "build": "tsup src/main.ts src/cli.ts --format esm --dts --clean",
     "prepack": "pnpm build",
     "benchmark:stack": "node scripts/benchmark-spatial-stack.mjs",
+    "benchmark:prg-2026": "node scripts/benchmark-prg-2026.mjs",
     "quality": "mcp-craftsman quality",
     "test": "vitest run"
   },
@@ -44,7 +45,9 @@
     "@turf/boolean-point-in-polygon": "7.3.5",
     "@turf/simplify": "7.3.5",
     "better-sqlite3": "12.11.1",
+    "csv-parse": "7.0.0",
     "proj4": "2.20.9",
+    "saxes": "6.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
