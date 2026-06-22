@@ -1,6 +1,7 @@
 {
   "entry": [
     "src/main.ts",
+    "src/cli.ts",
     "test/**/*.ts"
   ],
   "project": [

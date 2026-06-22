@@ -1,0 +1,13 @@
+# Changelog
+
+Wszystkie istotne zmiany projektu będą dokumentowane w tym pliku.
+
+Format opiera się na [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), a projekt stosuje [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- Szkielet serwera wygenerowany przez MCP Craftsman.
+- Narzędzie `health_status` oraz kontraktowe, integracyjne i architektoniczne testy bazowe.
+- Publikowalne metadane npm, CLI i informacje prawne projektu.
