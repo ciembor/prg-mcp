@@ -1,0 +1,6 @@
+backlog.md
+node_modules/
+dist/
+coverage/
+.DS_Store
+*.log
