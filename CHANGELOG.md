@@ -17,3 +17,4 @@ Format opiera się na [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 - Rejestr decyzji o przenoszeniu uniwersalnych mechanizmów do MCP Craftsman.
 - Release gate dla wstecznie kompatybilnych rozszerzeń MCP Craftsman.
 - Wieloplatformowa macierz CI dla PRG, minimalnej wersji frameworka i świeżo wygenerowanego projektu referencyjnego.
+- Udokumentowany przegląd bibliotek oraz cykliczne aktualizacje zależności przez Dependabot.
