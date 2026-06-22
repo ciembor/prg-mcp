@@ -32,6 +32,7 @@
     "prepack": "pnpm build",
     "benchmark:stack": "node scripts/benchmark-spatial-stack.mjs",
     "benchmark:prg-2026": "node scripts/benchmark-prg-2026.mjs",
+    "generate:feature": "mcp-craftsman generate feature",
     "quality": "mcp-craftsman quality",
     "test": "vitest run"
   },

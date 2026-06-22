@@ -4,7 +4,8 @@ Tablica jest aktualizowana w tym samym commicie, który zamyka bieżący feature
 
 | Feature | Status | Zakres zamknięcia |
 | --- | --- | --- |
-| PRG-011 | in_progress | generator-first: kontrola komend i procedura odstępstwa |
+| PRG-101 | in_progress | statyczny katalog 54 warstw PRG |
+| PRG-011 | closed | generator-first: komendy, kontrola kontraktowa i procedura odstępstwa |
 | PRG-010 | closed | tablica, reguły przejścia i test kontraktowy |
 | PRG-009 | closed | przegląd bibliotek i Dependabot |
 | PRG-008 | closed | wieloplatformowa macierz CI |

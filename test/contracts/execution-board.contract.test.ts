@@ -7,6 +7,6 @@ describe("execution board contract", () => {
     const board = await readFile(new URL("../../docs/execution-board.md", import.meta.url), "utf8");
     const activeRows = board.split("\n").filter((line) => /^\| PRG-\d+ \| in_progress \|/.test(line));
 
-    expect(activeRows).toEqual([expect.stringContaining("| PRG-011 | in_progress |")]);
+    expect(activeRows).toEqual([expect.stringContaining("| PRG-101 | in_progress |")]);
   });
 });
