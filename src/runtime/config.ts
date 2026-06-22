@@ -3,11 +3,13 @@ import type { RuntimeConfig } from "@mcp-craftsman/node";
 const defaultMaxDownloadBytes = 4 * 1024 * 1024 * 1024;
 const defaultSourceTimeoutMs = 30_000;
 const defaultSyncConcurrency = 2;
+const defaultFreshnessCheckMs = 24 * 60 * 60 * 1_000;
 
 export type PrgConfig = RuntimeConfig & {
   readonly maxDownloadBytes: number;
   readonly sourceTimeoutMs: number;
   readonly syncConcurrency: number;
+  readonly freshnessCheckMs: number;
 };
 
 export function loadPrgConfig(runtimeConfig: RuntimeConfig, env: NodeJS.ProcessEnv = process.env): PrgConfig {
@@ -30,6 +32,12 @@ export function loadPrgConfig(runtimeConfig: RuntimeConfig, env: NodeJS.ProcessE
       maximum: 8,
       minimum: 1,
       name: "PRG_SYNC_CONCURRENCY",
+    }),
+    freshnessCheckMs: readInteger(env.PRG_FRESHNESS_CHECK_MS, {
+      defaultValue: defaultFreshnessCheckMs,
+      maximum: 30 * 24 * 60 * 60 * 1_000,
+      minimum: 60_000,
+      name: "PRG_FRESHNESS_CHECK_MS",
     }),
   };
 }

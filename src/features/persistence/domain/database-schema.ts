@@ -1,4 +1,4 @@
-export const prgDatabaseSchemaVersion = 1;
+export const prgDatabaseSchemaVersion = 2;
 
 export const prgCanonicalMappingVersion = "2026-06-22";
 

@@ -92,12 +92,15 @@ function migrateCatalogDatabase(database: Database.Database, appVersion: string)
         scope text not null,
         state_date text,
         downloaded_at text not null,
+        checked_at text not null,
         etag text,
         last_modified text,
         sha256 text,
         record_count integer,
         schema_fingerprint text not null,
+        adapter_version text not null,
         source_url text not null,
+        archive_year integer,
         unique (dataset_key, scope, state_date)
       );
 
@@ -113,6 +116,10 @@ function migrateCatalogDatabase(database: Database.Database, appVersion: string)
       create index if not exists installed_coverage_layer_idx on installed_coverage(layer_id, scope_type, scope_code);
       create index if not exists snapshots_dataset_idx on snapshots(dataset_key, scope, state_date);
     `);
+    addColumnIfMissing(database, "snapshots", "checked_at", "text not null default '1970-01-01T00:00:00.000Z'");
+    addColumnIfMissing(database, "snapshots", "adapter_version", "text not null default 'unknown'");
+    addColumnIfMissing(database, "snapshots", "archive_year", "integer");
+    updateSchemaMetadata(database);
     database.pragma(`user_version = ${prgDatabaseSchemaVersion}`);
   })();
 }
@@ -173,6 +180,7 @@ function migrateBoundariesDatabase(database: Database.Database): void {
       create index if not exists areas_regon_idx on areas(regon);
       create index if not exists areas_validity_idx on areas(valid_from, valid_to);
     `);
+    updateSchemaMetadata(database);
     database.pragma(`user_version = ${prgDatabaseSchemaVersion}`);
   })();
 }
@@ -271,6 +279,7 @@ function migrateAddressShardDatabase(database: Database.Database): void {
       create index if not exists streets_municipality_idx on streets(municipality_code);
       create index if not exists streets_locality_idx on streets(locality_id);
     `);
+    updateSchemaMetadata(database);
     database.pragma(`user_version = ${prgDatabaseSchemaVersion}`);
   })();
 }
@@ -295,6 +304,20 @@ function createSchemaMetadata(database: Database.Database, kind: PrgDatabaseKind
       )
       .run(prgDatabaseSchemaVersion, kind, prgCanonicalMappingVersion, new Date(0).toISOString(), appVersion);
   }
+}
+
+function addColumnIfMissing(database: Database.Database, table: string, column: string, definition: string): void {
+  const columns = database.pragma(`table_info(${table})`) as { name: string }[];
+  if (!columns.some((candidate) => candidate.name === column)) {
+    database.exec(`alter table ${table} add column ${column} ${definition}`);
+  }
+}
+
+function updateSchemaMetadata(database: Database.Database): void {
+  database.prepare("update schema_metadata set version = ?, canonical_mapping_version = ?").run(
+    prgDatabaseSchemaVersion,
+    prgCanonicalMappingVersion,
+  );
 }
 
 function withDatabase<T>(path: string, callback: (database: Database.Database) => T): T {

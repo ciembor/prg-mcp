@@ -1,0 +1,37 @@
+import { describe, expect, it } from "vitest";
+
+import { planSync, SyncPlanningError } from "../../../src/features/synchronization/index.js";
+
+describe("PRG synchronization planner", () => {
+  it("expands profiles, normalizes duplicate scopes and estimates staging space", () => {
+    const plan = planSync({
+      availableDiskBytes: 20_000_000_000,
+      mode: "missing",
+      profile: "addresses",
+      teryt: ["1465", "1465", "0201011"],
+    });
+
+    expect(plan.targets).toHaveLength(4);
+    expect(plan.targets.map((target) => [target.layer.layerId, target.scope.code])).toEqual([
+      ["A07", "1465"], ["A07", "0201011"], ["A08", "1465"], ["A08", "0201011"],
+    ]);
+    expect(plan.estimatedDownloadBytes).toBeGreaterThan(0);
+    expect(plan.estimatedDiskBytes).toBeGreaterThan(plan.estimatedDownloadBytes);
+  });
+
+  it("rejects invalid TERYT and insufficient free space before synchronization", () => {
+    expect(() => planSync({ availableDiskBytes: 1, mode: "missing", profile: "administrative" })).toThrowError(
+      expect.objectContaining({ code: "INSUFFICIENT_DISK_SPACE" }),
+    );
+    expect(() => planSync({ availableDiskBytes: 10 ** 12, mode: "missing", profile: "addresses", teryt: ["14xx"] })).toThrowError(
+      expect.objectContaining({ code: "INVALID_TERYT" }),
+    );
+  });
+
+  it("plans only catalogued immutable administrative archives", () => {
+    const plan = planSync({ availableDiskBytes: 10 ** 12, archiveYear: 2024, mode: "stale", profile: "administrative-history" });
+    expect(plan.targets).toHaveLength(5);
+    expect(plan.targets.every((target) => target.datasetKey.startsWith("archive:2024:"))).toBe(true);
+    expect(() => planSync({ availableDiskBytes: 10 ** 12, archiveYear: 2014, mode: "force", profile: "administrative-history" })).toThrow(SyncPlanningError);
+  });
+});
