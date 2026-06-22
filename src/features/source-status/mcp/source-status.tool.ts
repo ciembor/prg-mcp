@@ -1,0 +1,29 @@
+import { defineZodTool } from "@mcp-craftsman/zod";
+import * as z from "zod";
+
+import type { PrgConfig } from "../../../runtime/config.js";
+import { getSourceStatus, operationalSourceStates, type SourceStatusProbe } from "../application/get-source-status.js";
+
+export function createSourceStatusTool(config: PrgConfig, probe?: SourceStatusProbe) {
+  return defineZodTool({
+    annotations: { readOnlyHint: true },
+    description: "Returns installed PRG coverage by layer and scope; optionally checks source metadata without downloading datasets.",
+    handler: async ({ checkRemote }) => {
+      const status = await getSourceStatus(config, checkRemote, probe);
+      return { structuredContent: { ...status, coverage: [...status.coverage], sources: [...status.sources] } };
+    },
+    input: z.object({ checkRemote: z.boolean().default(false) }),
+    name: "source_status",
+    output: z.object({
+      checkedRemote: z.boolean(),
+      coverage: z.array(z.object({
+        completeness: z.string(), layerId: z.string(), recordCount: z.number().int().optional(),
+        scopeCode: z.string(), scopeType: z.string(), stateDate: z.string().optional(),
+      })),
+      installedLayerCount: z.number().int(),
+      sources: z.array(z.object({ datasetKey: z.string(), status: z.enum(operationalSourceStates) })),
+      totalLayerCount: z.number().int(),
+    }),
+    policy: "read",
+  });
+}

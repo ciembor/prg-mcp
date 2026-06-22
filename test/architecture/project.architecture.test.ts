@@ -9,7 +9,9 @@ const sourceRoot = new URL("../../src/", import.meta.url);
 
 describe("project architecture", () => {
   it("keeps the capability registry valid", () => {
-    expect(registry.capabilities.map((capability) => capability.name)).toEqual(["health_status"]);
+    expect(registry.capabilities.map((capability) => capability.name)).toEqual([
+      "about", "health_status", "list_layers", "server_status", "source_status", "sync_data",
+    ]);
   });
 
   it("does not import private framework paths", async () => {

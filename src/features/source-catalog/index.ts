@@ -11,6 +11,7 @@ export { parseWfsCapabilities } from "./infrastructure/wfs/parse-wfs-capabilitie
 export { parseWmsCapabilities } from "./infrastructure/wms/parse-wms-capabilities.js";
 export { isAllowedPrgPackageHost, resolvePrgPackageRedirects, validatePrgPackageRedirectChain, validatePrgPackageUrl, WmsPackageRedirectError } from "./infrastructure/wms/wms-package-redirects.js";
 export type { PrgGeometryType, PrgLayer, PrgLayerCategory, PrgSourceChannel } from "./domain/prg-layer.js";
+export { prgGeometryTypes, prgLayerCategories, prgSourceChannels } from "./domain/prg-layer.js";
 export type { PrgArchivalBoundaryPackage } from "./domain/archival-boundary-catalog.js";
 export type { SchemaComparisonReport, SchemaField, SchemaFingerprint, SchemaTypeChange } from "./domain/schema-fingerprint.js";
 export type { WfsCapabilities, WfsCapabilitiesCanaryReport, WfsCanaryLayerChange, WfsCanaryLayerIssue, WfsFeatureType } from "./domain/wfs-capabilities.js";
