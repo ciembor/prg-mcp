@@ -1,4 +1,20 @@
 export {
+  classifyTextMatch,
+  compareTextMatches,
+  defaultTextMatchThresholds,
+  normalizePolishSearchText,
+  toPolishFtsQuery,
+} from "./domain/address-search.js";
+export type {
+  AddressSearchDocument,
+  AddressSearchOptions,
+  AddressSearchResult,
+  StreetSearchResult,
+  TextMatch,
+  TextMatchMode,
+  TextMatchThresholds,
+} from "./domain/address-search.js";
+export {
   normalizeAreaSearchText,
   toAreaFtsQuery,
   toAreaSearchRankBucket,
@@ -9,6 +25,12 @@ export type {
   AreaSearchRankBucket,
   AreaSearchResult,
 } from "./domain/area-search.js";
+export {
+  insertAddressSearchDocument,
+  rebuildStreetSearchIndex,
+  searchAddresses,
+  searchStreets,
+} from "./infrastructure/sqlite/address-search-sqlite.js";
 export {
   rebuildAreaSearchIndex,
   searchAreaNames,
