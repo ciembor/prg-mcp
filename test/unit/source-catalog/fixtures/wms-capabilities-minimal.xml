@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WMS_Capabilities version="1.3.0">
+  <Capability>
+    <Layer>
+      <Title>Państwowy Rejestr Granic</Title>
+      <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>granice_administracyjne</Name>
+        <Title>Granice administracyjne wg województw</Title>
+        <Style>
+          <Name>default</Name>
+          <Title>default</Title>
+        </Style>
+      </Layer>
+      <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>adresy</Name>
+        <Title>Adresy i ulice wg gmin</Title>
+      </Layer>
+      <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>adresy_pow</Name>
+        <Title>Adresy i ulice wg powiatów</Title>
+      </Layer>
+      <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>adresy_woj</Name>
+        <Title>Adresy i ulice wg województw</Title>
+      </Layer>
+      <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>adresy_zbiorcze</Name>
+        <Title>Adresy i ulice - dane zbiorcze</Title>
+      </Layer>
+      <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>granice_specjalne</Name>
+        <Title>Granice administracyjne i specjalne</Title>
+      </Layer>
+    </Layer>
+  </Capability>
+</WMS_Capabilities>
