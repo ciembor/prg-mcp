@@ -1,0 +1,753 @@
+{
+  "source": "https://mapy.geoportal.gov.pl/wss/service/PZGIK/PRG/WFS/AdministrativeBoundaries?SERVICE=WFS&VERSION=2.0.0&REQUEST=DescribeFeatureType",
+  "capturedAt": "2026-06-22",
+  "schemaShapes": [
+    {
+      "shapeId": "01",
+      "representativeLayer": "W12_Przystan_morska",
+      "layers": [
+        "W12_Przystan_morska"
+      ],
+      "fields": [
+        "msGeometry",
+        "DOCUMENT_I",
+        "MARINA_ID",
+        "MARINA_TYP",
+        "FULL_NAME",
+        "SHORT_NAME",
+        "COMMENTS",
+        "NOTES",
+        "SYS_NODE_C",
+        "SYS_VERSIO",
+        "SYS_VERS_1",
+        "SYS_DATE_A",
+        "SYS_DATA_A",
+        "SYS_DATA_E",
+        "SYS_UUID",
+        "LEGAL_STAT",
+        "IIP_PRZEST"
+      ]
+    },
+    {
+      "shapeId": "02",
+      "representativeLayer": "W11_Port_morski",
+      "layers": [
+        "W11_Port_morski"
+      ],
+      "fields": [
+        "msGeometry",
+        "DOCUMENT_I",
+        "PORT_ID",
+        "PORT_TYPE_",
+        "FULL_NAME",
+        "SHORT_NAME",
+        "COMMENTS",
+        "NOTES",
+        "SYS_NODE_C",
+        "SYS_VERSIO",
+        "SYS_VERS_1",
+        "SYS_DATE_A",
+        "SYS_DATA_A",
+        "SYS_DATA_E",
+        "LEGAL_STAT",
+        "IIP_PRZEST"
+      ]
+    },
+    {
+      "shapeId": "03",
+      "representativeLayer": "W10_Reda",
+      "layers": [
+        "W10_Reda"
+      ],
+      "fields": [
+        "msGeometry",
+        "DESCRIPTIO",
+        "DOCUMENT_I",
+        "PORT_ID",
+        "ROADSTEAD_",
+        "FULL_NAME",
+        "SHORT_NAME",
+        "COMMENTS",
+        "NOTES",
+        "SYS_NODE_C",
+        "SYS_VERSIO",
+        "SYS_VERS_1",
+        "SYS_DATE_A",
+        "SYS_DATA_A",
+        "SYS_DATA_E",
+        "SYS_UUID",
+        "LEGAL_STAT",
+        "IIP_PRZEST"
+      ]
+    },
+    {
+      "shapeId": "04",
+      "representativeLayer": "W09_Pas_techniczny",
+      "layers": [
+        "W09_Pas_techniczny",
+        "W08_Pas_ochronny"
+      ],
+      "fields": [
+        "msGeometry",
+        "DOCUMENT_I",
+        "COASTAL_ZO",
+        "TERYT_NO",
+        "COASTAL_Z0",
+        "FULL_NAME",
+        "SHORT_NAME",
+        "DESCRIPTIO",
+        "COMMENTS",
+        "NOTES",
+        "SYS_NODE_C",
+        "SYS_VERSIO",
+        "SYS_VERSI0",
+        "SYS_DATE_A",
+        "SYS_DATA_A",
+        "SYS_DATA_E",
+        "SYS_UUID",
+        "IIP_PRZEST"
+      ]
+    },
+    {
+      "shapeId": "05",
+      "representativeLayer": "W07_Pas_nadbrzezny",
+      "layers": [
+        "W07_Pas_nadbrzezny"
+      ],
+      "fields": [
+        "msGeometry",
+        "FID",
+        "DOCUMENT_I",
+        "COASTAL_ZO",
+        "TERYT_NO",
+        "COASTAL__1",
+        "FULL_NAME",
+        "SHORT_NAME",
+        "COMMENTS",
+        "NOTES",
+        "SYS_NODE_C",
+        "SYS_VERSIO",
+        "SYS_VERS_1",
+        "SYS_DATE_A",
+        "SYS_DATA_A",
+        "SYS_DATA_E",
+        "SYS_UUID",
+        "IIP_PRZEST"
+      ]
+    },
+    {
+      "shapeId": "06",
+      "representativeLayer": "W06_Morskie_linie_brzegowe",
+      "layers": [
+        "W06_Morskie_linie_brzegowe"
+      ],
+      "fields": [
+        "msGeometry",
+        "DOCUMENT_I",
+        "COASTLINE_",
+        "COASTLINE0",
+        "FULL_NAME",
+        "SHORT_NAME",
+        "DESCRIPTIO",
+        "COMMENTS",
+        "NOTES",
+        "SYS_NODE_C",
+        "SYS_VERSIO",
+        "SYS_VERSI0",
+        "SYS_DATE_A",
+        "SYS_DATA_A",
+        "SYS_DATA_E",
+        "SYS_UUID",
+        "LEGAL_STAT",
+        "IIP_PRZEST"
+      ]
+    },
+    {
+      "shapeId": "07",
+      "representativeLayer": "W05_Strefa_przylegla",
+      "layers": [
+        "W05_Strefa_przylegla"
+      ],
+      "fields": [
+        "msGeometry",
+        "CONTIGUOUS",
+        "FULL_NAME",
+        "SHORT_NAME",
+        "DESCRIPTIO",
+        "COMMENTS",
+        "NOTES",
+        "SYS_NODE_C",
+        "SYS_VERSIO",
+        "SYS_VERSI0",
+        "SYS_DATE_A",
+        "SYS_DATA_A",
+        "SYS_DATA_E",
+        "SYS_UUID"
+      ]
+    },
+    {
+      "shapeId": "08",
+      "representativeLayer": "W04_Wylaczna_strefa_ekonomiczna",
+      "layers": [
+        "W04_Wylaczna_strefa_ekonomiczna"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_SJR_KO",
+        "JPT_KOD_JE",
+        "JPT_NAZWA_",
+        "JPT_ORGAN_",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "ID_BUFORA_",
+        "ID_BUFORA1",
+        "ID_TECHNIC",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "IIP_WERSJA",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_OPIS",
+        "JPT_SPS_KO",
+        "ID_BUFOR_1",
+        "JPT_ID",
+        "JPT_KJ_I_3",
+        "SHAPE_LENG",
+        "SHAPE_AREA"
+      ]
+    },
+    {
+      "shapeId": "09",
+      "representativeLayer": "W03_Morskie_wody_wewnetrzne",
+      "layers": [
+        "W03_Morskie_wody_wewnetrzne"
+      ],
+      "fields": [
+        "msGeometry",
+        "FID",
+        "ID",
+        "SHORT_NAME",
+        "AREA",
+        "WERSJA_OD",
+        "IIP_PRZEST"
+      ]
+    },
+    {
+      "shapeId": "10",
+      "representativeLayer": "W02_Morze_terytorialne_RP",
+      "layers": [
+        "W02_Morze_terytorialne_RP"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_SJR_KO",
+        "JPT_POWIER",
+        "JPT_KOD_JE",
+        "JPT_NAZWA_",
+        "JPT_ORGAN_",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "ID_BUFORA_",
+        "ID_BUFORA1",
+        "ID_TECHNIC",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "IIP_WERSJA",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_OPIS",
+        "JPT_SPS_KO",
+        "ID_BUFOR_1",
+        "JPT_ID",
+        "JPT_POWI_1",
+        "JPT_KJ_I_3",
+        "JPT_GEOMET",
+        "JPT_GEOM_1",
+        "SHAPE_LENG",
+        "SHAPE_AREA"
+      ]
+    },
+    {
+      "shapeId": "11",
+      "representativeLayer": "W01_Linia_podstawowa_morza_terytorialnego",
+      "layers": [
+        "W01_Linia_podstawowa_morza_terytorialnego"
+      ],
+      "fields": [
+        "msGeometry",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "GRA_SGT_KO",
+        "GRA_SGP_KO",
+        "GRA_SPS_KO",
+        "GRA_SGA_SB",
+        "GRA_WAZNY_",
+        "GRA_DOK_SB",
+        "ID_BUFORA_",
+        "ID_BUFORA1",
+        "ID_TECHNIC",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "IIP_WERSJA",
+        "GRA_GRA_ID",
+        "ID_BUFOR_1",
+        "GRA_ID",
+        "GRA_GEOMET",
+        "SHAPE_LENG"
+      ]
+    },
+    {
+      "shapeId": "12",
+      "representativeLayer": "U11_Urzad_zeglugi_srodladowej",
+      "layers": [
+        "U11_Urzad_zeglugi_srodladowej"
+      ],
+      "fields": [
+        "msGeometry",
+        "MIASTO",
+        "RODZAJ",
+        "URZAD",
+        "REGON"
+      ]
+    },
+    {
+      "shapeId": "13",
+      "representativeLayer": "U10_Urzad_morski",
+      "layers": [
+        "U10_Urzad_morski"
+      ],
+      "fields": [
+        "msGeometry",
+        "DOCUMENT_I",
+        "MARITIME_O",
+        "OFFICE_ID",
+        "FULL_NAME",
+        "SHORT_NAME",
+        "COMMENTS",
+        "NOTES",
+        "SYS_NODE_C",
+        "SYS_VERSIO",
+        "SYS_VERS_1",
+        "SYS_DATE_A",
+        "SYS_DATA_A",
+        "SYS_DATA_E",
+        "SYS_UUID",
+        "LEGAL_STAT",
+        "IIP_PRZEST"
+      ]
+    },
+    {
+      "shapeId": "14",
+      "representativeLayer": "U09_Regionalny_zarzad_gospodarki_wodnej_PGWWP",
+      "layers": [
+        "U09_Regionalny_zarzad_gospodarki_wodnej_PGWWP"
+      ],
+      "fields": [
+        "msGeometry",
+        "RZGW_KOD",
+        "RZGW",
+        "REGON"
+      ]
+    },
+    {
+      "shapeId": "15",
+      "representativeLayer": "U08_Zarzad_zlewni_PGWWP",
+      "layers": [
+        "U08_Zarzad_zlewni_PGWWP"
+      ],
+      "fields": [
+        "msGeometry",
+        "ZZ_MIASTO",
+        "RZGW_KOD",
+        "RZGW",
+        "REGON"
+      ]
+    },
+    {
+      "shapeId": "16",
+      "representativeLayer": "U07_Regionalna_dyrekcja_lasow_panstwowych",
+      "layers": [
+        "U07_Regionalna_dyrekcja_lasow_panstwowych",
+        "U06_Nadlesnictwo",
+        "U05_Izba_administracji_skarbowej",
+        "U03_Wyspecjalizowany_urzad_skarbowy",
+        "U02_Urzad_skarbowy",
+        "K06_Komenda_wojewodzka_strazy_pozarnej",
+        "K05_Komisariat_policji",
+        "K04_Komenda_rejonowa_policji",
+        "K03_Komenda_stoleczna_policji",
+        "K02_Komenda_powiatowa_policji",
+        "K01_Komenda_wojewodzka_policji",
+        "S04_Wojewodzki_sad_administracyjny",
+        "S03_Sad_rejonowy",
+        "S02_Sad_okregowy",
+        "S01_Sad_apelacyjny"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_SJR_KO",
+        "JPT_KOD_JE",
+        "JPT_NAZWA_",
+        "JPT_ORGAN_",
+        "JPT_POWIER",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "ID_BUFORA_",
+        "ID_BUFORA1",
+        "ID_TECHNIC",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "IIP_WERSJA",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_OPIS",
+        "JPT_SPS_KO",
+        "ID_BUFOR_1",
+        "JPT_ID",
+        "JPT_POWI_1",
+        "JPT_KJ_I_3",
+        "JPT_GEOMET",
+        "JPT_GEOM_1",
+        "SHAPE_LENG",
+        "SHAPE_AREA",
+        "REGON"
+      ]
+    },
+    {
+      "shapeId": "17",
+      "representativeLayer": "U04_Urzad_celno-skarbowy",
+      "layers": [
+        "U04_Urzad_celno-skarbowy"
+      ],
+      "fields": [
+        "msGeometry",
+        "LP",
+        "NAZWA",
+        "KIERUJACY",
+        "ZASIEG",
+        "REGON"
+      ]
+    },
+    {
+      "shapeId": "18",
+      "representativeLayer": "U01_Archiwum_panstwowe",
+      "layers": [
+        "U01_Archiwum_panstwowe",
+        "K08_Oddzial_strazy_granicznej",
+        "P02_Prokuratura_okregowa",
+        "P01_Prokuratura_regionalna"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_NAZWA_",
+        "JPT_SJR_KO",
+        "JPT_KOD_JE",
+        "JPT_ORGAN_",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "ID_BUFORA_",
+        "ID_BUFORA1",
+        "ID_TECHNIC",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "IIP_WERSJA",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_OPIS",
+        "JPT_SPS_KO",
+        "ID_BUFOR_1",
+        "JPT_ID",
+        "JPT_POWI_1",
+        "JPT_KJ_I_3",
+        "JPT_GEOMET",
+        "JPT_GEOM_1",
+        "SHAPE_LENG",
+        "SHAPE_AREA",
+        "REGON",
+        "JPT_POWIER"
+      ]
+    },
+    {
+      "shapeId": "19",
+      "representativeLayer": "K13_Obszar_dzialania_szefa_obrony_cywilnej_gminy",
+      "layers": [
+        "K13_Obszar_dzialania_szefa_obrony_cywilnej_gminy",
+        "K12_Obszar_dzialania_szefa_obrony_cywilnej_powiatu",
+        "K11_Obszar_dzialania_szefa_obrony_cywilnej_wojewodztwa",
+        "K10_Dywizjon_strazy_granicznej",
+        "K09_Placowka_strazy_granicznej",
+        "K07_Komenda_powiatowa_strazy_pozarnej"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_SJR_KO",
+        "JPT_POWIER",
+        "JPT_KOD_JE",
+        "JPT_NAZWA_",
+        "JPT_ORGAN_",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "ID_BUFORA_",
+        "ID_BUFORA1",
+        "ID_TECHNIC",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "IIP_WERSJA",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_OPIS",
+        "JPT_SPS_KO",
+        "ID_BUFOR_1",
+        "JPT_ID",
+        "JPT_POWI_1",
+        "JPT_KJ_I_3",
+        "JPT_GEOMET",
+        "JPT_GEOM_1",
+        "SHAPE_LENG",
+        "SHAPE_AREA",
+        "REGON"
+      ]
+    },
+    {
+      "shapeId": "20",
+      "representativeLayer": "P03_Prokuratura_rejonowa",
+      "layers": [
+        "P03_Prokuratura_rejonowa"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_SJR_KO",
+        "JPT_KOD_JE",
+        "JPT_ORGAN_",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "ID_BUFORA_",
+        "ID_BUFORA1",
+        "ID_TECHNIC",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "IIP_WERSJA",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_OPIS",
+        "JPT_SPS_KO",
+        "ID_BUFOR_1",
+        "JPT_ID",
+        "JPT_POWI_1",
+        "JPT_KJ_I_3",
+        "JPT_GEOMET",
+        "JPT_GEOM_1",
+        "SHAPE_LENG",
+        "SHAPE_AREA",
+        "REGON",
+        "JPT_NAZWA_",
+        "JPT_POWIER"
+      ]
+    },
+    {
+      "shapeId": "21",
+      "representativeLayer": "R02_Granice_obwodow_spisowych",
+      "layers": [
+        "R02_Granice_obwodow_spisowych"
+      ],
+      "fields": [
+        "msGeometry",
+        "WW",
+        "PP",
+        "GG",
+        "R",
+        "OBWOD",
+        "REJ",
+        "OBW",
+        "TERYT",
+        "SHAPE_LENG",
+        "SHAPE_AREA"
+      ]
+    },
+    {
+      "shapeId": "22",
+      "representativeLayer": "R01_Granice_rejonow_statystycznych",
+      "layers": [
+        "R01_Granice_rejonow_statystycznych"
+      ],
+      "fields": [
+        "msGeometry",
+        "WW",
+        "PP",
+        "GG",
+        "R",
+        "REJ",
+        "TERYT",
+        "SHAPE_LENG",
+        "SHAPE_AREA"
+      ]
+    },
+    {
+      "shapeId": "23",
+      "representativeLayer": "A06_Granice_obrebow_ewidencyjnych",
+      "layers": [
+        "A06_Granice_obrebow_ewidencyjnych",
+        "A00_Granice_panstwa"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_KOD_JE",
+        "JPT_SJR_KO",
+        "JPT_NAZWA_",
+        "JPT_POWIER",
+        "JPT_ORGAN_",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_SPS_KO",
+        "JPT_POWI_1",
+        "JPT_KJ_I_3",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "IIP_WERSJA",
+        "JPT_OPIS",
+        "JPT_ID",
+        "SHAPE_LENG",
+        "SHAPE_AREA"
+      ]
+    },
+    {
+      "shapeId": "24",
+      "representativeLayer": "A05_Granice_jednostek_ewidencyjnych",
+      "layers": [
+        "A05_Granice_jednostek_ewidencyjnych",
+        "A04_Granice_miast"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_KOD_JE",
+        "JPT_SJR_KO",
+        "JPT_NAZWA_",
+        "JPT_POWIER",
+        "JPT_ORGAN_",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_SPS_KO",
+        "JPT_POWI_1",
+        "JPT_KJ_I_3",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "IIP_WERSJA",
+        "JPT_OPIS",
+        "JPT_ID",
+        "SHAPE_LENG",
+        "SHAPE_LE_1",
+        "SHAPE_AREA"
+      ]
+    },
+    {
+      "shapeId": "25",
+      "representativeLayer": "A03_Granice_gmin",
+      "layers": [
+        "A03_Granice_gmin",
+        "A02_Granice_powiatow",
+        "A01_Granice_wojewodztw"
+      ],
+      "fields": [
+        "msGeometry",
+        "JPT_KOD_JE",
+        "JPT_SJR_KO",
+        "JPT_NAZWA_",
+        "JPT_POWIER",
+        "JPT_ORGAN_",
+        "JPT_KOD__1",
+        "JPT_NAZWA1",
+        "JPT_ORGAN1",
+        "JPT_WAZNA_",
+        "IIP_PRZEST",
+        "IIP_IDENTY",
+        "JPT_KJ_IIP",
+        "JPT_KJ_I_1",
+        "JPT_KJ_I_2",
+        "JPT_SPS_KO",
+        "JPT_POWI_1",
+        "JPT_KJ_I_3",
+        "JPT_JOR_ID",
+        "WERSJA_OD",
+        "WERSJA_DO",
+        "WAZNY_OD",
+        "WAZNY_DO",
+        "IIP_WERSJA",
+        "JPT_OPIS",
+        "JPT_ID",
+        "REGON",
+        "SHAPE_LENG",
+        "SHAPE_AREA"
+      ]
+    }
+  ]
+}
