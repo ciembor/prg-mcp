@@ -11,3 +11,4 @@ Format opiera się na [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 - Szkielet serwera wygenerowany przez MCP Craftsman.
 - Narzędzie `health_status` oraz kontraktowe, integracyjne i architektoniczne testy bazowe.
 - Publikowalne metadane npm, CLI i informacje prawne projektu.
+- Walidowana konfiguracja runtime dla timeoutu źródeł, limitu pobierania i współbieżności synchronizacji.
