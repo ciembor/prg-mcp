@@ -1,10 +1,37 @@
 export {
   CoordinateTransformError,
 } from "./domain/coordinates.js";
+export {
+  bboxOfGeometry,
+  centroidOfGeometry,
+  toRtreeRow,
+  toSqliteRtreeValues,
+} from "./domain/geometry.js";
 export type {
   Epsg2180Point,
   Epsg4326Point,
 } from "./domain/coordinates.js";
+export type {
+  BoundingBox,
+  LineStringGeometry,
+  MultiLineStringGeometry,
+  MultiPointGeometry,
+  MultiPolygonGeometry,
+  PointGeometry,
+  PolygonGeometry,
+  Position,
+  PrgGeometry,
+  RtreeRow,
+} from "./domain/geometry.js";
+export {
+  decodeWkb,
+  encodeWkb,
+  WkbError,
+} from "./domain/wkb.js";
+export {
+  geometriesIntersect,
+  pointCoveredByPolygon,
+} from "./infrastructure/turf/geometry-predicates.js";
 export {
   epsg2180Code,
   epsg2180Definition,
