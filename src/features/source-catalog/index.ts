@@ -1,6 +1,7 @@
 export { listPrgLayerDefinitions } from "./application/list-prg-layers.js";
 export { checkWfsCapabilitiesCanary } from "./application/check-wfs-capabilities-canary.js";
 export { checkWmsPackageCatalog } from "./application/check-wms-package-catalog.js";
+export { getPrgArchivalBoundaryPackage, listPrgArchivalBoundaryPackages, prgArchivalBoundaryCatalog, prgArchivalBoundaryCatalogVersion } from "./domain/archival-boundary-catalog.js";
 export { getPrgLayer, listPrgLayers, prgLayerCatalog, prgLayerCatalogVersion } from "./domain/prg-layer-catalog.js";
 export { listPrgWmsPackageLayers, prgWmsPackageCatalog, prgWmsPackageScopeTypes } from "./domain/wms-package-catalog.js";
 export { prgWfsDefaultCrs } from "./domain/wfs-capabilities.js";
@@ -9,6 +10,7 @@ export { parseWfsCapabilities } from "./infrastructure/wfs/parse-wfs-capabilitie
 export { parseWmsCapabilities } from "./infrastructure/wms/parse-wms-capabilities.js";
 export { isAllowedPrgPackageHost, resolvePrgPackageRedirects, validatePrgPackageRedirectChain, validatePrgPackageUrl, WmsPackageRedirectError } from "./infrastructure/wms/wms-package-redirects.js";
 export type { PrgGeometryType, PrgLayer, PrgLayerCategory, PrgSourceChannel } from "./domain/prg-layer.js";
+export type { PrgArchivalBoundaryPackage } from "./domain/archival-boundary-catalog.js";
 export type { WfsCapabilities, WfsCapabilitiesCanaryReport, WfsCanaryLayerChange, WfsCanaryLayerIssue, WfsFeatureType } from "./domain/wfs-capabilities.js";
 export type { WfsBbox, WfsClient, WfsClientOptions, WfsFeaturePage, WfsFeaturePageRequest, WfsFetch, WfsFetchInit, WfsResponse, WfsRetryOptions, WfsSleep, WfsSupportedCrs } from "./infrastructure/wfs/wfs-client.js";
 export type { PrgWmsPackageLayer, PrgWmsPackageScopeType } from "./domain/wms-package-catalog.js";
