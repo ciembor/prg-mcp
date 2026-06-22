@@ -5,12 +5,14 @@ export { getPrgArchivalBoundaryPackage, listPrgArchivalBoundaryPackages, prgArch
 export { getPrgLayer, listPrgLayers, prgLayerCatalog, prgLayerCatalogVersion } from "./domain/prg-layer-catalog.js";
 export { listPrgWmsPackageLayers, prgWmsPackageCatalog, prgWmsPackageScopeTypes } from "./domain/wms-package-catalog.js";
 export { prgWfsDefaultCrs } from "./domain/wfs-capabilities.js";
+export { compareSchemaFingerprints, createSchemaFingerprint } from "./domain/schema-fingerprint.js";
 export { buildGetFeatureUrl, createWfsClient, formatWfsBbox, parseFeatureCollectionPage, toWfsCrsName, WfsClientError } from "./infrastructure/wfs/wfs-client.js";
 export { parseWfsCapabilities } from "./infrastructure/wfs/parse-wfs-capabilities.js";
 export { parseWmsCapabilities } from "./infrastructure/wms/parse-wms-capabilities.js";
 export { isAllowedPrgPackageHost, resolvePrgPackageRedirects, validatePrgPackageRedirectChain, validatePrgPackageUrl, WmsPackageRedirectError } from "./infrastructure/wms/wms-package-redirects.js";
 export type { PrgGeometryType, PrgLayer, PrgLayerCategory, PrgSourceChannel } from "./domain/prg-layer.js";
 export type { PrgArchivalBoundaryPackage } from "./domain/archival-boundary-catalog.js";
+export type { SchemaComparisonReport, SchemaField, SchemaFingerprint, SchemaTypeChange } from "./domain/schema-fingerprint.js";
 export type { WfsCapabilities, WfsCapabilitiesCanaryReport, WfsCanaryLayerChange, WfsCanaryLayerIssue, WfsFeatureType } from "./domain/wfs-capabilities.js";
 export type { WfsBbox, WfsClient, WfsClientOptions, WfsFeaturePage, WfsFeaturePageRequest, WfsFetch, WfsFetchInit, WfsResponse, WfsRetryOptions, WfsSleep, WfsSupportedCrs } from "./infrastructure/wfs/wfs-client.js";
 export type { PrgWmsPackageLayer, PrgWmsPackageScopeType } from "./domain/wms-package-catalog.js";
