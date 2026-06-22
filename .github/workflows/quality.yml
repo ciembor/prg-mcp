@@ -1,0 +1,94 @@
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  project:
+    name: PRG MCP / ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        node:
+          - 22
+        include:
+          - os: ubuntu-latest
+            node: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version: ${{ matrix.node }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm quality
+      - run: pnpm build
+      - run: node dist/cli.js tools
+
+  minimum-framework:
+    name: Oldest supported MCP Craftsman
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Install oldest supported framework exactly
+        run: >-
+          pnpm add --save-exact
+          @mcp-craftsman/core@0.2.1
+          @mcp-craftsman/node@0.2.1
+          @mcp-craftsman/zod@0.2.1
+          && pnpm add --save-exact --save-dev @mcp-craftsman/cli@0.2.1
+      - run: pnpm quality
+      - run: pnpm build
+
+  framework-regression:
+    name: Framework and generated-project regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PRG MCP
+        uses: actions/checkout@v4
+        with:
+          path: prg-mcp
+      - name: Check out MCP Craftsman
+        uses: actions/checkout@v4
+        with:
+          path: mcp-craftsman
+          repository: ciembor/mcp-craftsman
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate framework
+        working-directory: mcp-craftsman
+        run: pnpm install --frozen-lockfile && pnpm quality && pnpm build
+      - name: Generate reference project
+        run: node mcp-craftsman/packages/cli/dist/cli.js init generated-reference --name generated-reference
+      - name: Validate generated reference project
+        working-directory: generated-reference
+        run: pnpm install && pnpm quality && pnpm build
+      - name: Validate PRG MCP
+        working-directory: prg-mcp
+        run: pnpm install --frozen-lockfile && pnpm quality && pnpm build
