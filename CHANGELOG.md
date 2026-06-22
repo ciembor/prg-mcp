@@ -18,3 +18,4 @@ Format opiera się na [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 - Release gate dla wstecznie kompatybilnych rozszerzeń MCP Craftsman.
 - Wieloplatformowa macierz CI dla PRG, minimalnej wersji frameworka i świeżo wygenerowanego projektu referencyjnego.
 - Udokumentowany przegląd bibliotek oraz cykliczne aktualizacje zależności przez Dependabot.
+- Wersjonowana tablica wykonania z testem wymuszającym jeden aktywny feature.
