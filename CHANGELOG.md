@@ -14,3 +14,4 @@ Format opiera się na [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 - Walidowana konfiguracja runtime dla timeoutu źródeł, limitu pobierania i współbieżności synchronizacji.
 - Zweryfikowany stos przestrzenny: SQLite/FTS5/R-tree, WKB, transformacje CRS i predykaty geometrii.
 - Reprodukowalny benchmark pojemnościowy na regionalnych danych PRG z 2026 r.
+- Rejestr decyzji o przenoszeniu uniwersalnych mechanizmów do MCP Craftsman.
