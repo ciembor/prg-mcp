@@ -5,6 +5,11 @@ export {
   normalizePolishSearchText,
   toPolishFtsQuery,
 } from "./domain/address-search.js";
+export {
+  CursorError,
+  decodeSnapshotCursor,
+  encodeSnapshotCursor,
+} from "./domain/opaque-cursor.js";
 export type {
   AddressSearchDocument,
   AddressSearchOptions,
@@ -14,6 +19,13 @@ export type {
   TextMatchMode,
   TextMatchThresholds,
 } from "./domain/address-search.js";
+export type {
+  CursorErrorCode,
+  CursorSortValue,
+  DecodeSnapshotCursorOptions,
+  EncodeSnapshotCursorOptions,
+  SnapshotCursorPayload,
+} from "./domain/opaque-cursor.js";
 export {
   normalizeAreaSearchText,
   toAreaFtsQuery,
