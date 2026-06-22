@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wfs:WFS_Capabilities
+  xmlns:wfs="http://www.opengis.net/wfs/2.0"
+  xmlns:ows="http://www.opengis.net/ows/1.1"
+  version="2.0.0">
+  <FeatureTypeList>
+    <FeatureType>
+      <Name>ms:A00_Granice_panstwa</Name>
+      <Title>A00_Granice_panstwa</Title>
+      <DefaultCRS>urn:ogc:def:crs:EPSG::2180</DefaultCRS>
+      <OtherCRS>urn:ogc:def:crs:EPSG::4326</OtherCRS>
+      <OutputFormats>
+        <Format>application/gml+xml; version=3.2</Format>
+      </OutputFormats>
+      <ows:WGS84BoundingBox dimensions="2">
+        <ows:LowerCorner>14.122 49.002</ows:LowerCorner>
+        <ows:UpperCorner>24.145 54.836</ows:UpperCorner>
+      </ows:WGS84BoundingBox>
+    </FeatureType>
+    <FeatureType>
+      <Name>ms:W01_Linia_podstawowa_morza_terytorialnego</Name>
+      <Title>W01_Linia_podstawowa_morza_terytorialnego</Title>
+      <DefaultCRS>urn:ogc:def:crs:EPSG::2180</DefaultCRS>
+      <OutputFormats>
+        <Format>application/gml+xml; version=3.2</Format>
+      </OutputFormats>
+    </FeatureType>
+  </FeatureTypeList>
+</wfs:WFS_Capabilities>
