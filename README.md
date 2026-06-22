@@ -6,7 +6,7 @@ Projekt jest na wczesnym etapie rozwoju. Obecne wydanie udostępnia szkielet ser
 
 ## Wymagania
 
-- Node.js 20.19 lub nowszy;
+- Node.js 22 lub nowszy;
 - pnpm 10.x do pracy ze źródłami.
 
 ## Uruchomienie ze źródeł

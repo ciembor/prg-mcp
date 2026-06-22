@@ -6,6 +6,9 @@ type PackageMetadata = {
   readonly bin: Readonly<Record<string, string>>;
   readonly files: readonly string[];
   readonly license: string;
+  readonly engines: {
+    readonly node: string;
+  };
   readonly name: string;
   readonly private: boolean;
   readonly repository: {
@@ -22,6 +25,9 @@ describe("npm package metadata contract", () => {
         "prg-mcp": "dist/cli.js",
       },
       license: "EUPL-1.2",
+      engines: {
+        node: ">=22.0.0",
+      },
       name: "prg-mcp",
       private: false,
       repository: {

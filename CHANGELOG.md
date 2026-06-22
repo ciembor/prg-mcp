@@ -12,3 +12,4 @@ Format opiera się na [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 - Narzędzie `health_status` oraz kontraktowe, integracyjne i architektoniczne testy bazowe.
 - Publikowalne metadane npm, CLI i informacje prawne projektu.
 - Walidowana konfiguracja runtime dla timeoutu źródeł, limitu pobierania i współbieżności synchronizacji.
+- Zweryfikowany stos przestrzenny: SQLite/FTS5/R-tree, WKB, transformacje CRS i predykaty geometrii.
