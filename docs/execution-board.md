@@ -4,7 +4,17 @@ Tablica jest aktualizowana w tym samym commicie, który zamyka bieżący feature
 
 | Feature | Status | Zakres zamknięcia |
 | --- | --- | --- |
-| PRG-101 | in_progress | statyczny katalog 54 warstw PRG |
+| PRG-801 | in_progress | unit tests for parsers, ranking, CRS, WKB, predicates, manifests, planner, migrations and errors |
+| PRG-709 | closed | stderr-only/silent-aware CLI diagnostics and log redaction rule |
+| PRG-708 | closed | data sync, tools, architecture, tutorial and troubleshooting documentation |
+| PRG-707 | closed | natural-language intent selection guide |
+| PRG-706 | closed | Codex, Claude Desktop, VS Code and stdio/HTTP configuration docs |
+| PRG-705 | closed | setup estimates, administrative recommendation and poland-full confirmation |
+| PRG-704 | closed | CLI GeoJSON export outside MCP context |
+| PRG-703 | closed | coverage, source-status and doctor CLI commands |
+| PRG-702 | closed | sync CLI command backed by sync_data use case |
+| PRG-701 | closed | serve/status/tools/call/setup CLI surface |
+| PRG-101 | closed | statyczny katalog 54 warstw PRG |
 | PRG-011 | closed | generator-first: komendy, kontrola kontraktowa i procedura odstępstwa |
 | PRG-010 | closed | tablica, reguły przejścia i test kontraktowy |
 | PRG-009 | closed | przegląd bibliotek i Dependabot |
