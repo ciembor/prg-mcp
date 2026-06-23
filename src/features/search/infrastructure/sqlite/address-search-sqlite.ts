@@ -167,12 +167,32 @@ function toStreetSearchResult(row: StreetSqlRow, query: string): StreetSearchRes
 function formatAddressCandidate(row: AddressSqlRow): string {
   return [
     row.locality_name,
-    row.street_name ? `ulica ${row.street_name}` : undefined,
+    formatStreetName(row.street_name),
     row.building_number,
     row.postal_code,
   ]
     .filter((value): value is string => Boolean(value))
     .join(" ");
+}
+
+function formatStreetName(streetName: string | null): string | undefined {
+  if (!streetName) {
+    return undefined;
+  }
+
+  const normalizedStreetName = normalizePolishSearchText(streetName);
+
+  if (
+    normalizedStreetName.startsWith("aleja ")
+    || normalizedStreetName.startsWith("plac ")
+    || normalizedStreetName.startsWith("rondo ")
+    || normalizedStreetName.startsWith("osiedle ")
+    || normalizedStreetName.startsWith("ulica ")
+  ) {
+    return streetName;
+  }
+
+  return `ulica ${streetName}`;
 }
 
 function compareAddressResults(left: AddressSearchResult & { bm25: number }, right: AddressSearchResult & { bm25: number }): number {

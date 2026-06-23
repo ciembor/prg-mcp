@@ -1,6 +1,13 @@
 import { createCapabilityRegistry } from "@mcp-craftsman/core";
 import { loadRuntimeConfig } from "@mcp-craftsman/node";
 
+import {
+  createGetAddressTool,
+  createGetStreetTool,
+  createReverseAddressTool,
+  createSearchAddressesTool,
+  createSearchStreetsTool,
+} from "../features/addresses/index.js";
 import { aboutTool } from "../features/about/index.js";
 import {
   createGetAreaGeometryTool,
@@ -21,13 +28,18 @@ export type RegistryServices = { readonly sourceStatusProbe?: SourceStatusProbe;
 export function createRegistry(config: PrgConfig, services: RegistryServices = {}) {
   return createCapabilityRegistry([
     aboutTool,
+    createGetAddressTool(config),
     createGetAreaTool(config),
     createGetAreaGeometryTool(config),
+    createGetStreetTool(config),
     healthTool,
     createListLayersTool(config),
     createLocatePointTool(config),
     createRelateAreasTool(config),
+    createReverseAddressTool(config),
+    createSearchAddressesTool(config),
     createSearchAreasTool(config),
+    createSearchStreetsTool(config),
     createServerStatusTool(config),
     createSourceStatusTool(config, services.sourceStatusProbe),
     createSyncDataTool(config, services.syncDataRunner),

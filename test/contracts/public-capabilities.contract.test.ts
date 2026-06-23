@@ -7,21 +7,28 @@ import { callTool, type Capability } from "@mcp-craftsman/core";
 import Database from "better-sqlite3";
 
 import { createApp } from "../../src/app.js";
+import { encodeAddressId, encodeStreetId } from "../../src/features/addresses/index.js";
 import { encodeAreaId } from "../../src/features/areas/index.js";
 import { initializePrgDatabases } from "../../src/features/persistence/index.js";
-import { bboxOfGeometry, centroidOfGeometry, encodeWkb, type PolygonGeometry } from "../../src/features/spatial/index.js";
+import { insertAddressSearchDocument, rebuildStreetSearchIndex } from "../../src/features/search/index.js";
+import { bboxOfGeometry, centroidOfGeometry, encodeWkb, type LineStringGeometry, type PolygonGeometry } from "../../src/features/spatial/index.js";
 import { loadPrgConfig } from "../../src/runtime/config.js";
 
-function publicToolInputs(areaId: string): Readonly<Record<string, unknown>> {
+function publicToolInputs(areaId: string, addressId: string, streetId: string): Readonly<Record<string, unknown>> {
   return {
   about: {},
+  get_address: { addressId },
   get_area: { areaId },
   get_area_geometry: { areaId, maxVertices: 100 },
+  get_street: { streetId },
   health_status: {},
   list_layers: {},
   locate_point: { category: "administrative", x: 5, y: 5 },
   relate_areas: { areaId, category: "administrative" },
+  reverse_address: { radiusMeters: 10, voivodeshipCodes: ["14"], x: 637807, y: 486708 },
+  search_addresses: { query: "Warszawa Żurawia 12A", voivodeshipCodes: ["14"] },
   search_areas: { category: "administrative", query: "Wieliszew" },
+  search_streets: { query: "Żurawia", voivodeshipCodes: ["14"] },
   server_status: {},
   source_status: {},
   sync_data: { mode: "missing", profile: "administrative" },
@@ -30,13 +37,18 @@ function publicToolInputs(areaId: string): Readonly<Record<string, unknown>> {
 
 const invalidInputErrors: Readonly<Record<string, string>> = {
   about: "about received invalid input.",
+  get_address: "get_address received invalid input.",
   get_area: "get_area received invalid input.",
   get_area_geometry: "get_area_geometry received invalid input.",
+  get_street: "get_street received invalid input.",
   health_status: "health_status received invalid input.",
   list_layers: "list_layers received invalid input.",
   locate_point: "locate_point received invalid input.",
   relate_areas: "relate_areas received invalid input.",
+  reverse_address: "reverse_address received invalid input.",
+  search_addresses: "search_addresses received invalid input.",
   search_areas: "search_areas received invalid input.",
+  search_streets: "search_streets received invalid input.",
   server_status: "server_status received invalid input.",
   source_status: "source_status received invalid input.",
   sync_data: "sync_data received invalid input.",
@@ -46,7 +58,7 @@ describe("public capability contracts", () => {
   it("covers every public capability", () => {
     const app = createContractApp();
 
-    expect(app.registry.capabilities.map((capability) => capability.name)).toEqual(Object.keys(publicToolInputs(contractAreaId)));
+    expect(app.registry.capabilities.map((capability) => capability.name)).toEqual(Object.keys(publicToolInputs(contractAreaId, contractAddressId, contractStreetId)));
   });
 
   it("defines output schemas and consistent annotations", () => {
@@ -62,7 +74,7 @@ describe("public capability contracts", () => {
   it("returns structured content for every public tool", async () => {
     const app = createContractApp();
 
-    for (const [toolName, input] of Object.entries(publicToolInputs(contractAreaId))) {
+    for (const [toolName, input] of Object.entries(publicToolInputs(contractAreaId, contractAddressId, contractStreetId))) {
       const result = await callTool(app, toolName, input);
 
       expect(result, toolName).toHaveProperty("structuredContent");
@@ -104,10 +116,13 @@ function expectAnnotations(tool: Capability): void {
 }
 
 const contractAreaId = encodeAreaId({ layerId: "A03", objectId: "gmina-wieliszew", snapshotId: 1 });
+const contractAddressId = encodeAddressId({ objectId: "pa-waw-zurawia-12a", voivodeshipCode: "14" });
+const contractStreetId = encodeStreetId({ objectId: "ul-zurawia", voivodeshipCode: "14" });
 
 function createContractApp() {
   const dataDir = mkdtempSync(join(tmpdir(), "prg-mcp-public-contract-"));
   createAreaFixture(dataDir);
+  createAddressFixture(dataDir);
   return createApp(loadPrgConfig({ configDir: dataDir, dataDir, logLevel: "silent", port: 0, transport: "stdio" }, {}), {
     syncDataRunner: {
       run: async (plan) => ({
@@ -124,7 +139,7 @@ function createContractApp() {
 }
 
 function createAreaFixture(dataDir: string): void {
-  const { boundariesPath } = initializePrgDatabases({ addressShardCodes: ["02"], dataDir });
+  const { boundariesPath } = initializePrgDatabases({ addressShardCodes: ["02", "14"], dataDir });
   const database = new Database(boundariesPath);
 
   try {
@@ -133,6 +148,67 @@ function createAreaFixture(dataDir: string): void {
   } finally {
     database.close();
   }
+}
+
+function createAddressFixture(dataDir: string): void {
+  const { addressShardPaths } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });
+  const database = new Database(addressShardPaths["14"]);
+
+  try {
+    database
+      .prepare(`
+        insert into addresses (
+          rowid, object_id, iip_id, municipality_code, locality_name, street_name, building_number,
+          postal_code, x, y, source_scope, source_properties_json
+        ) values (
+          1, 'pa-waw-zurawia-12a', 'iip-pa-1', '1465011', 'Warszawa', 'Żurawia', '12A',
+          '00503', 637807, 486708, 'woj:14', '{}'
+        )
+      `)
+      .run();
+    database
+      .prepare("insert into addresses_rtree(rowid, min_x, max_x, min_y, max_y) values (1, 637807, 637807, 486708, 486708)")
+      .run();
+    insertAddressSearchDocument(database, {
+      buildingNumber: "12A",
+      fullAddress: "Warszawa ulica Żurawia 12A 00503",
+      localityName: "Warszawa",
+      postalCode: "00503",
+      rowid: 1,
+      streetName: "Żurawia",
+    });
+    insertStreet(database);
+    rebuildStreetSearchIndex(database);
+  } finally {
+    database.close();
+  }
+}
+
+function insertStreet(database: Database.Database): void {
+  const geometry: LineStringGeometry = {
+    coordinates: [
+      [637000, 486000],
+      [638000, 487000],
+    ],
+    type: "LineString",
+  };
+  const bbox = bboxOfGeometry(geometry);
+
+  database
+    .prepare(`
+      insert into streets (
+        rowid, object_id, name, normalized_name, min_x, min_y, max_x, max_y, geometry_wkb
+      ) values (
+        1, 'ul-zurawia', 'Żurawia', 'zurawia', @minX, @minY, @maxX, @maxY, @geometryWkb
+      )
+    `)
+    .run({
+      geometryWkb: Buffer.from(encodeWkb(geometry)),
+      maxX: bbox.maxX,
+      maxY: bbox.maxY,
+      minX: bbox.minX,
+      minY: bbox.minY,
+    });
 }
 
 function insertArea(database: Database.Database, rowid: number, layerId: string, objectId: string, geometry: PolygonGeometry): void {

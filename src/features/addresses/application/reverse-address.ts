@@ -1,0 +1,85 @@
+import type { PrgConfig } from "../../../runtime/config.js";
+import type { PrgVoivodeshipCode } from "../../persistence/index.js";
+import { listInstalledAddressShards, openAddressShard, toAddressSummary, AddressToolError, type AddressRow, type AddressSummary } from "./address-model.js";
+
+export type ReverseAddressInput = {
+  readonly x: number;
+  readonly y: number;
+  readonly radiusMeters?: number;
+  readonly maxCandidates?: number;
+  readonly voivodeshipCodes?: readonly PrgVoivodeshipCode[];
+  readonly limit?: number;
+};
+
+export type ReverseAddressResult = {
+  readonly point: readonly [number, number];
+  readonly radiusMeters: number;
+  readonly addresses: readonly (AddressSummary & { readonly distanceMeters: number })[];
+};
+
+const maximumRadiusMeters = 10_000;
+
+export async function reverseAddress(config: PrgConfig, input: ReverseAddressInput): Promise<ReverseAddressResult> {
+  const radiusMeters = input.radiusMeters ?? 500;
+  const maxCandidates = Math.min(input.maxCandidates ?? 500, 5_000);
+
+  if (radiusMeters > maximumRadiusMeters) {
+    throw new AddressToolError("RADIUS_LIMIT_EXCEEDED", `reverse_address radius limit is ${maximumRadiusMeters} meters.`);
+  }
+
+  const results: Array<AddressSummary & { distanceMeters: number }> = [];
+
+  for (const voivodeshipCode of listInstalledAddressShards(config, input.voivodeshipCodes)) {
+    const database = openAddressShard(config, voivodeshipCode);
+
+    if (!database) {
+      continue;
+    }
+
+    try {
+      const rows = database
+        .prepare(`
+          select addresses.*
+          from addresses_rtree
+          join addresses on addresses.rowid = addresses_rtree.rowid
+          where addresses_rtree.min_x <= @maxX
+            and addresses_rtree.max_x >= @minX
+            and addresses_rtree.min_y <= @maxY
+            and addresses_rtree.max_y >= @minY
+          order by addresses.object_id asc
+          limit @maxCandidates
+        `)
+        .all({
+          maxCandidates,
+          maxX: input.x + radiusMeters,
+          maxY: input.y + radiusMeters,
+          minX: input.x - radiusMeters,
+          minY: input.y - radiusMeters,
+        }) as AddressRow[];
+
+      if (rows.length >= maxCandidates) {
+        throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
+      }
+
+      results.push(
+        ...rows
+          .map((row) => ({ ...toAddressSummary(voivodeshipCode, row), distanceMeters: distance(input.x, input.y, row.x, row.y) }))
+          .filter((row) => row.distanceMeters <= radiusMeters),
+      );
+    } finally {
+      database.close();
+    }
+  }
+
+  return {
+    addresses: results
+      .sort((left, right) => left.distanceMeters - right.distanceMeters || left.objectId.localeCompare(right.objectId, "pl"))
+      .slice(0, Math.min(input.limit ?? 10, 100)),
+    point: [input.x, input.y],
+    radiusMeters,
+  };
+}
+
+function distance(x1: number, y1: number, x2: number, y2: number): number {
+  return Math.hypot(x1 - x2, y1 - y2);
+}

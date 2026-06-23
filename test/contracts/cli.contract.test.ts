@@ -22,6 +22,11 @@ describe("prg-mcp CLI contract", () => {
           policy: "read",
         },
         {
+          description: "Returns one PRG address point with IIP identifier, coordinates, postal-code attribute and source provenance.",
+          name: "get_address",
+          policy: "read",
+        },
+        {
           description: "Returns one PRG area record with mapped common attributes and raw source attributes, without full geometry.",
           name: "get_area",
           policy: "read",
@@ -29,6 +34,11 @@ describe("prg-mcp CLI contract", () => {
         {
           description: "Returns PRG area geometry as GeoJSON in EPSG:2180, with optional simplification and vertex limit.",
           name: "get_area_geometry",
+          policy: "read",
+        },
+        {
+          description: "Returns one PRG street record with attributes and geometry from installed A08 street data.",
+          name: "get_street",
           policy: "read",
         },
         {
@@ -52,8 +62,23 @@ describe("prg-mcp CLI contract", () => {
           policy: "read",
         },
         {
+          description: "Finds nearest PRG address points around an EPSG:2180 point using expanding R-tree candidates, exact distance and hard radius/candidate limits.",
+          name: "reverse_address",
+          policy: "read",
+        },
+        {
+          description: "Searches PRG address points by natural-language text or structured fields; query and structured input are mutually exclusive.",
+          name: "search_addresses",
+          policy: "read",
+        },
+        {
           description: "Searches PRG area/territorial-competence records by text, code, category, layer, validity date and snapshot.",
           name: "search_areas",
+          policy: "read",
+        },
+        {
+          description: "Searches PRG streets, including street records that have no installed address points when A08 street data is present.",
+          name: "search_streets",
           policy: "read",
         },
         {
