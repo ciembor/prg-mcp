@@ -2,11 +2,13 @@
 import { createDefaultCliIo, createMcpCli, isCliEntrypoint, type CliIo } from "@mcp-craftsman/node";
 
 import { createApp } from "./app.js";
+import { createPrgCliCommands } from "./cli/prg-cli-commands.js";
 import { loadPrgConfig } from "./runtime/config.js";
 
 export async function runCli(argv: readonly string[] = process.argv.slice(2), io: CliIo = createDefaultCliIo()) {
   const cli = createMcpCli({
     appName: "prg-mcp",
+    commands: createPrgCliCommands(),
     createApp: (runtimeConfig) => createApp(loadPrgConfig(runtimeConfig, io.env)),
   });
 

@@ -1,10 +1,30 @@
 import { Writable } from "node:stream";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { runCli } from "../../src/cli.js";
 
+const contractDataDir = join(process.cwd(), ".tmp", "prg-mcp-cli-contract");
+
 describe("prg-mcp CLI contract", () => {
+  it("returns PRG server status", async () => {
+    const stdout = new MemoryWritable();
+
+    await runCli(["status"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout,
+    });
+
+    expect(JSON.parse(stdout.content)).toMatchObject({
+      dataDir: contractDataDir,
+      sqlite: { fts5: true, rtree: true },
+      transport: "stdio",
+    });
+    expect(JSON.parse(stdout.content).databaseSchemaVersion).toEqual(expect.any(Number));
+  });
+
   it("lists public tools", async () => {
     const stdout = new MemoryWritable();
 
@@ -98,6 +118,58 @@ describe("prg-mcp CLI contract", () => {
         },
       ],
     });
+  });
+
+  it("reports coverage for all PRG layers", async () => {
+    const stdout = new MemoryWritable();
+
+    await runCli(["coverage"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout,
+    });
+
+    const result = JSON.parse(stdout.content) as { layers: unknown[]; totalLayerCount: number };
+    expect(result.totalLayerCount).toBe(54);
+    expect(result.layers).toHaveLength(54);
+  });
+
+  it("shows setup estimate for the recommended administrative profile", async () => {
+    const stdout = new MemoryWritable();
+    const stderr = new MemoryWritable();
+
+    await runCli(["setup"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr,
+      stdout,
+    });
+
+    expect(JSON.parse(stdout.content)).toMatchObject({
+      command: "prg-mcp sync --profile administrative --mode missing",
+      profile: "administrative",
+      targetCount: 5,
+    });
+    expect(stderr.content).toContain("Recommended starter profile: administrative.");
+  });
+
+  it("requires explicit confirmation for poland-full setup", async () => {
+    await expect(runCli(["setup", "--profile", "poland-full"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout: new MemoryWritable(),
+    })).rejects.toThrow("poland-full requires --confirm-poland-full");
+  });
+
+  it("keeps setup diagnostics silent when requested", async () => {
+    const stderr = new MemoryWritable();
+
+    await runCli(["setup"], {
+      env: { MCP_DATA_DIR: contractDataDir, MCP_LOG_LEVEL: "silent" },
+      stderr,
+      stdout: new MemoryWritable(),
+    });
+
+    expect(stderr.content).toBe("");
   });
 });
 
