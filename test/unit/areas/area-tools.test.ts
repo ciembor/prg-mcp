@@ -1,0 +1,242 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import Database from "better-sqlite3";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { encodeAreaId, getArea, getAreaGeometry, locatePoint, relateAreas, searchAreas, vertexCount } from "../../../src/features/areas/index.js";
+import { initializePrgDatabases } from "../../../src/features/persistence/index.js";
+import { bboxOfGeometry, centroidOfGeometry, encodeWkb, type LineStringGeometry, type PolygonGeometry, type PrgGeometry } from "../../../src/features/spatial/index.js";
+import { loadPrgConfig, type PrgConfig } from "../../../src/runtime/config.js";
+
+describe("P5 area tools", () => {
+  const temporaryDirectories: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(temporaryDirectories.map((directory) => rm(directory, { force: true, recursive: true })));
+    temporaryDirectories.length = 0;
+  });
+
+  it("searches areas by text, category, code, validity and snapshot", async () => {
+    const { config } = await createAreaFixture();
+
+    await expect(searchAreas(config, { category: "administrative", query: "Wieliszew", snapshotId: 1, validOn: "2026-01-01" })).resolves.toMatchObject({
+      areas: [
+        {
+          category: "administrative",
+          code: "1408032",
+          layerId: "A03",
+          name: "Gmina Wieliszew",
+          snapshotId: 1,
+        },
+      ],
+    });
+
+    await expect(searchAreas(config, { code: "1408032", snapshotId: 2 })).resolves.toMatchObject({
+      areas: [{ name: "Gmina Wieliszew 2025", snapshotId: 2 }],
+    });
+  });
+
+  it("keeps golden area queries for administrative, court, prosecution, police, tax, forest and maritime layers", async () => {
+    const { config } = await createAreaFixture();
+
+    await expect(searchAreas(config, { category: "administrative", query: "Mazowieckie" })).resolves.toMatchObject({ areas: [{ layerId: "A01" }] });
+    await expect(searchAreas(config, { category: "administrative", query: "Legionowski" })).resolves.toMatchObject({ areas: [{ layerId: "A02" }] });
+    await expect(searchAreas(config, { category: "court", query: "Sąd Rejonowy" })).resolves.toMatchObject({ areas: [{ layerId: "S03" }] });
+    await expect(searchAreas(config, { category: "prosecution", query: "Prokuratura Rejonowa" })).resolves.toMatchObject({ areas: [{ layerId: "P03" }] });
+    await expect(searchAreas(config, { category: "service", query: "Komenda Powiatowa" })).resolves.toMatchObject({ areas: [{ layerId: "K02" }] });
+    await expect(searchAreas(config, { category: "office", query: "Urząd Skarbowy" })).resolves.toMatchObject({ areas: [{ layerId: "U02" }] });
+    await expect(searchAreas(config, { category: "office", query: "Nadleśnictwo" })).resolves.toMatchObject({ areas: [{ layerId: "U06" }] });
+    await expect(searchAreas(config, { category: "maritime", query: "Morze Terytorialne" })).resolves.toMatchObject({ areas: [{ layerId: "W02" }] });
+  });
+
+  it("gets common area attributes and full geometry with simplification metadata", async () => {
+    const { config, gminaAreaId } = await createAreaFixture();
+
+    await expect(getArea(config, gminaAreaId)).resolves.toMatchObject({
+      areaId: gminaAreaId,
+      attributes: { jpt_kod_je: "1408032" },
+      bbox: [0, 0, 10, 10],
+      layerTitle: "Granice gmin",
+      objectId: "gmina-wieliszew",
+    });
+
+    const geometry = await getAreaGeometry(config, { areaId: gminaAreaId, maxVertices: 4, toleranceMeters: 1 });
+
+    expect(geometry.crs).toBe("EPSG:2180");
+    expect(geometry.layerId).toBe("A03");
+    expect(geometry.vertexCount).toBeLessThanOrEqual(vertexCount(square));
+  });
+
+  it("locates all overlapping territorial competences and includes boundary points", async () => {
+    const { config } = await createAreaFixture();
+
+    const result = await locatePoint(config, { category: "administrative", snapshotId: 1, x: 10, y: 5 });
+
+    expect(result.matches.map((match) => [match.layerId, match.objectId])).toEqual([
+      ["A01", "woj-mazowieckie"],
+      ["A02", "pow-legionowski"],
+      ["A03", "gmina-wieliszew"],
+    ]);
+  });
+
+  it("relates bounded surfaces and lines and rejects unbounded scans at the MCP-schema level", async () => {
+    const { config, gminaAreaId } = await createAreaFixture();
+
+    const result = await relateAreas(config, { areaId: gminaAreaId, layerIds: ["W01"], snapshotId: 1 });
+
+    expect(result.source.objectId).toBe("gmina-wieliszew");
+    expect(result.matches.map((match) => [match.layerId, match.objectId])).toEqual([["W01", "linia-testowa"]]);
+  });
+
+  async function createAreaFixture(): Promise<{ config: PrgConfig; gminaAreaId: string }> {
+    const directory = await mkdtemp(join(tmpdir(), "prg-area-tools-"));
+    temporaryDirectories.push(directory);
+    const { boundariesPath } = initializePrgDatabases({ addressShardCodes: ["02"], dataDir: directory });
+    const database = new Database(boundariesPath);
+
+    try {
+      insertArea(database, {
+        code: "14",
+        geometry: bigSquare,
+        layerId: "A01",
+        name: "Województwo Mazowieckie",
+        objectId: "woj-mazowieckie",
+        rowid: 1,
+      });
+      insertArea(database, {
+        code: "1408",
+        geometry: bigSquare,
+        layerId: "A02",
+        name: "Powiat Legionowski",
+        objectId: "pow-legionowski",
+        rowid: 2,
+      });
+      insertArea(database, {
+        code: "1408032",
+        geometry: square,
+        layerId: "A03",
+        name: "Gmina Wieliszew",
+        objectId: "gmina-wieliszew",
+        rowid: 3,
+        sourceProperties: { jpt_kod_je: "1408032" },
+      });
+      insertArea(database, {
+        code: "1408032",
+        geometry: square,
+        layerId: "A03",
+        name: "Gmina Wieliszew 2025",
+        objectId: "gmina-wieliszew",
+        rowid: 4,
+        snapshotId: 2,
+      });
+      insertArea(database, {
+        geometry: diagonal,
+        layerId: "W01",
+        name: "Linia testowa",
+        objectId: "linia-testowa",
+        rowid: 5,
+      });
+      insertArea(database, { geometry: bigSquare, layerId: "S03", name: "Sąd Rejonowy w Legionowie", objectId: "sad", rowid: 6 });
+      insertArea(database, { geometry: bigSquare, layerId: "P03", name: "Prokuratura Rejonowa w Legionowie", objectId: "prokuratura", rowid: 7 });
+      insertArea(database, { geometry: bigSquare, layerId: "K02", name: "Komenda Powiatowa Policji w Legionowie", objectId: "policja", rowid: 8 });
+      insertArea(database, { geometry: bigSquare, layerId: "U02", name: "Urząd Skarbowy w Legionowie", objectId: "urzad-skarbowy", rowid: 9 });
+      insertArea(database, { geometry: bigSquare, layerId: "U06", name: "Nadleśnictwo Jabłonna", objectId: "nadlesnictwo", rowid: 10 });
+      insertArea(database, { geometry: bigSquare, layerId: "W02", name: "Morze Terytorialne RP", objectId: "morze-terytorialne", rowid: 11 });
+    } finally {
+      database.close();
+    }
+
+    return {
+      config: loadPrgConfig({ configDir: directory, dataDir: directory, logLevel: "silent", port: 0, transport: "stdio" }, {}),
+      gminaAreaId: encodeAreaId({ layerId: "A03", objectId: "gmina-wieliszew", snapshotId: 1 }),
+    };
+  }
+});
+
+type AreaFixture = {
+  readonly rowid: number;
+  readonly snapshotId?: number;
+  readonly layerId: string;
+  readonly objectId: string;
+  readonly name?: string;
+  readonly code?: string;
+  readonly geometry: PrgGeometry;
+  readonly sourceProperties?: Record<string, unknown>;
+};
+
+function insertArea(database: Database.Database, fixture: AreaFixture): void {
+  const bbox = bboxOfGeometry(fixture.geometry);
+  const centroid = centroidOfGeometry(fixture.geometry);
+
+  database
+    .prepare(`
+      insert into areas (
+        rowid, snapshot_id, layer_id, object_id, name, normalized_name, aliases, code, iip_id, regon,
+        valid_from, valid_to, version_from, version_to, area_m2, centroid_x, centroid_y,
+        min_x, min_y, max_x, max_y, geometry_wkb, source_properties_json
+      ) values (
+        @rowid, @snapshotId, @layerId, @objectId, @name, @normalizedName, null, @code, null, null,
+        '2020-01-01', null, null, null, null, @centroidX, @centroidY,
+        @minX, @minY, @maxX, @maxY, @geometryWkb, @sourcePropertiesJson
+      )
+    `)
+    .run({
+      centroidX: centroid.coordinates[0],
+      centroidY: centroid.coordinates[1],
+      code: fixture.code ?? null,
+      geometryWkb: Buffer.from(encodeWkb(fixture.geometry)),
+      layerId: fixture.layerId,
+      maxX: bbox.maxX,
+      maxY: bbox.maxY,
+      minX: bbox.minX,
+      minY: bbox.minY,
+      name: fixture.name ?? fixture.objectId,
+      normalizedName: (fixture.name ?? fixture.objectId).toLowerCase(),
+      objectId: fixture.objectId,
+      rowid: fixture.rowid,
+      snapshotId: fixture.snapshotId ?? 1,
+      sourcePropertiesJson: JSON.stringify(fixture.sourceProperties ?? {}),
+    });
+
+  database
+    .prepare("insert into areas_rtree(rowid, min_x, max_x, min_y, max_y) values (@rowid, @minX, @maxX, @minY, @maxY)")
+    .run({ maxX: bbox.maxX, maxY: bbox.maxY, minX: bbox.minX, minY: bbox.minY, rowid: fixture.rowid });
+  database.prepare("insert into areas_fts(rowid, name, normalized_name, code, aliases) values (@rowid, @name, @normalizedName, @code, '')").run({
+    code: fixture.code ?? "",
+    name: fixture.name ?? fixture.objectId,
+    normalizedName: (fixture.name ?? fixture.objectId).toLowerCase(),
+    rowid: fixture.rowid,
+  });
+}
+
+const square: PolygonGeometry = {
+  coordinates: [[
+    [0, 0],
+    [10, 0],
+    [10, 10],
+    [0, 10],
+    [0, 0],
+  ]],
+  type: "Polygon",
+};
+
+const bigSquare: PolygonGeometry = {
+  coordinates: [[
+    [-1, -1],
+    [11, -1],
+    [11, 11],
+    [-1, 11],
+    [-1, -1],
+  ]],
+  type: "Polygon",
+};
+
+const diagonal: LineStringGeometry = {
+  coordinates: [
+    [-1, -1],
+    [11, 11],
+  ],
+  type: "LineString",
+};

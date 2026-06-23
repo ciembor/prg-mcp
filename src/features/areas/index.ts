@@ -1,0 +1,12 @@
+export { getArea, getAreaWithGeometry } from "./application/get-area.js";
+export { getAreaGeometry, vertexCount } from "./application/get-area-geometry.js";
+export { locatePoint } from "./application/locate-point.js";
+export { relateAreas } from "./application/relate-areas.js";
+export { searchAreas } from "./application/search-areas.js";
+export { AreaToolError, decodeAreaId, encodeAreaId } from "./application/area-model.js";
+export { createGetAreaGeometryTool, createGetAreaTool, createLocatePointTool, createRelateAreasTool, createSearchAreasTool } from "./mcp/areas.tools.js";
+export type { AreaIdentifier, AreaSummary, AreaWithGeometry } from "./application/area-model.js";
+export type { AreaGeometryResult } from "./application/get-area-geometry.js";
+export type { LocatePointInput, LocatePointResult } from "./application/locate-point.js";
+export type { RelateAreasInput, RelateAreasResult } from "./application/relate-areas.js";
+export type { SearchAreasInput, SearchAreasResult } from "./application/search-areas.js";

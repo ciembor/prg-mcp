@@ -22,6 +22,16 @@ describe("prg-mcp CLI contract", () => {
           policy: "read",
         },
         {
+          description: "Returns one PRG area record with mapped common attributes and raw source attributes, without full geometry.",
+          name: "get_area",
+          policy: "read",
+        },
+        {
+          description: "Returns PRG area geometry as GeoJSON in EPSG:2180, with optional simplification and vertex limit.",
+          name: "get_area_geometry",
+          policy: "read",
+        },
+        {
           description: "Returns basic server health.",
           name: "health_status",
           policy: "read",
@@ -29,6 +39,21 @@ describe("prg-mcp CLI contract", () => {
         {
           description: "Lists all 54 PRG layers with purpose, geometry, source channel, local availability, scopes and record counts.",
           name: "list_layers",
+          policy: "read",
+        },
+        {
+          description: "Finds all polygon areas covering an EPSG:2180 point; boundary points are included with covers semantics.",
+          name: "locate_point",
+          policy: "read",
+        },
+        {
+          description: "Finds bounded intersecting PRG areas/lines for one source area; requires layerIds or category and enforces a candidate cost limit.",
+          name: "relate_areas",
+          policy: "read",
+        },
+        {
+          description: "Searches PRG area/territorial-competence records by text, code, category, layer, validity date and snapshot.",
+          name: "search_areas",
           policy: "read",
         },
         {
