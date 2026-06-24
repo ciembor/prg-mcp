@@ -20,3 +20,4 @@ Format opiera się na [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 - Udokumentowany przegląd bibliotek oraz cykliczne aktualizacje zależności przez Dependabot.
 - Wersjonowana tablica wykonania z testem wymuszającym jeden aktywny feature.
 - Workflow generator-first z komendą projektową, rejestrem odstępstw i testem kontraktowym.
+- Dokumentacja provenance PRG, macierz zgodności 54/54, checklisty platformowe i release/rollback.

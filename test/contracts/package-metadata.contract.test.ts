@@ -34,6 +34,6 @@ describe("npm package metadata contract", () => {
         url: "git+https://github.com/ciembor/prg-mcp.git",
       },
     });
-    expect(metadata.files).toEqual(["dist", "CHANGELOG.md", "LICENSE", "NOTICE.md", "README.md"]);
+    expect(metadata.files).toEqual(["dist", "docs", "CHANGELOG.md", "LICENSE", "NOTICE.md", "README.md"]);
   });
 });

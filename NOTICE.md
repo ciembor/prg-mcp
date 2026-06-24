@@ -15,3 +15,11 @@ https://www.geoportal.gov.pl/pl/dane/panstwowy-rejestr-granic-prg/
 Geoportal deklaruje dane PRG jako dostępne bezpłatnie i do dowolnego wykorzystania. Dane nie są częścią kodu źródłowego ani pakietu npm; użytkownik pobiera je z oficjalnych usług GUGiK podczas jawnej synchronizacji.
 
 Każda lokalna migawka będzie przechowywać datę stanu udostępnioną przez źródło, czas pobrania, adres źródłowy i sumę kontrolną. PRG MCP przetwarza dane do lokalnej bazy i indeksów wyszukiwania, ale nie jest systemem GUGiK ani oficjalnym interfejsem Geoportalu. Główny Urząd Geodezji i Kartografii nie odpowiada za działanie projektu ani wyniki przetwarzania.
+
+## Oficjalne usługi wykorzystywane przez projekt
+
+- https://mapy.geoportal.gov.pl/wss/service/PZGIK/PRG/WFS/AdministrativeBoundaries
+- https://mapy.geoportal.gov.pl/wss/service/PanstwowyRejestrGranic
+- https://mapy.geoportal.gov.pl/wss/ext/KrajowaIntegracjaNumeracjiAdresowej
+
+Szczegółowa dokumentacja provenance, dat stanu i ograniczeń interpretacji znajduje się w `docs/provenance.md`.

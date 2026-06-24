@@ -51,7 +51,10 @@ Szczegółowe instrukcje:
 - `docs/tutorial.md` — szybka ścieżka od instalacji do pierwszego zapytania;
 - `docs/troubleshooting.md` — typowe problemy i diagnostyka;
 - `docs/architecture/cli-ux.md` — zasady CLI, stdio i logowania;
-- `docs/testing-security.md` — testy, pack smoke, canary i audyt.
+- `docs/testing-security.md` — testy, pack smoke, canary i audyt;
+- `docs/provenance.md` — źródła, daty stanu i ograniczenia interpretacji;
+- `docs/layer-coverage.md` — matryca zgodności 54 warstw;
+- `docs/release.md` — platformy, checklisty wydania i rollback.
 
 ## Źródło danych
 
