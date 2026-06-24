@@ -50,7 +50,8 @@ Szczegółowe instrukcje:
 - `docs/intent-selection.md` — wybór narzędzia dla pytań naturalnych;
 - `docs/tutorial.md` — szybka ścieżka od instalacji do pierwszego zapytania;
 - `docs/troubleshooting.md` — typowe problemy i diagnostyka;
-- `docs/architecture/cli-ux.md` — zasady CLI, stdio i logowania.
+- `docs/architecture/cli-ux.md` — zasady CLI, stdio i logowania;
+- `docs/testing-security.md` — testy, pack smoke, canary i audyt.
 
 ## Źródło danych
 

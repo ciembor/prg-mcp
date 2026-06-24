@@ -4,7 +4,16 @@ Tablica jest aktualizowana w tym samym commicie, który zamyka bieżący feature
 
 | Feature | Status | Zakres zamknięcia |
 | --- | --- | --- |
-| PRG-801 | in_progress | unit tests for parsers, ranking, CRS, WKB, predicates, manifests, planner, migrations and errors |
+| PRG-901 | in_progress | provenance, source limitations, state dates and validity/version attribute interpretation |
+| PRG-809 | closed | SBOM/audit entry point, host allowlist and no arbitrary URL MCP input contract |
+| PRG-808 | closed | npm pack clean-install smoke for setup, tools and CLI startup |
+| PRG-807 | closed | architecture boundaries, cycle, private import and public API tests |
+| PRG-806 | closed | separate non-blocking nightly canary for source catalogs and fixtures |
+| PRG-805 | closed | bounded geometry property and GML fuzz coverage |
+| PRG-804 | closed | resilience coverage for download/source failures, unsafe archives/XML, rollback and validation errors |
+| PRG-803 | closed | fixture GML to SQLite to MCP core/stdio/HTTP roundtrip |
+| PRG-802 | closed | public tool contracts for success, invalid input, no-result and stale cursor behavior |
+| PRG-801 | closed | unit tests for parsers, ranking, CRS, WKB, predicates, manifests, planner, migrations and errors |
 | PRG-709 | closed | stderr-only/silent-aware CLI diagnostics and log redaction rule |
 | PRG-708 | closed | data sync, tools, architecture, tutorial and troubleshooting documentation |
 | PRG-707 | closed | natural-language intent selection guide |
