@@ -42,11 +42,10 @@ describe("operational MCP tools", () => {
     expect(status).toMatchObject({ installedLayerCount: 1, totalLayerCount: 54, coverage: [{ layerId: "A00", scopeCode: "PL" }] });
   });
 
-  it("exposes stable sync error codes", async () => {
+  it("does not expose sync_data until a real synchronization runner is wired", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "prg-sync-tool-"));
     await expect(callTool(createApp(testConfig(dataDir)), "sync_data", { profile: "administrative" })).rejects.toMatchObject({
-      code: "SOURCE_UNAVAILABLE",
-      name: "SyncDataToolError",
+      message: "Tool \"sync_data\" is not registered.",
     });
   });
 
@@ -62,6 +61,12 @@ describe("operational MCP tools", () => {
     };
     expect(result.checkedRemote).toBe(true);
     expect(result.sources.map(({ status }) => status)).toEqual(states);
+  });
+
+  it("fails remote source status checks when no remote probe is configured", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-source-probe-missing-"));
+
+    await expect(callTool(createApp(testConfig(dataDir)), "source_status", { checkRemote: true })).rejects.toThrow("Remote source status probe is not configured.");
   });
 });
 

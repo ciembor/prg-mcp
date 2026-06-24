@@ -14,18 +14,19 @@ W paczce npm używaj binarki `prg-mcp` bez zakładania instalacji globalnej:
 npx prg-mcp tools
 ```
 
-## 2. Pierwsza synchronizacja
+## 2. Plan danych
 
 ```bash
 prg-mcp setup
-prg-mcp sync --profile administrative --mode missing
 prg-mcp coverage
 ```
 
-Adresy instaluj dla jawnego zakresu:
+Publiczny runner synchronizacji nie jest jeszcze spakowany. Dane muszą być przygotowane przez skonfigurowany pipeline importu albo przyszłą komendę `sync`.
+
+Adresy będą planowane dla jawnego zakresu:
 
 ```bash
-prg-mcp sync --profile addresses --teryt 146501 --mode missing
+prg-mcp setup --profile addresses --teryt 146501
 ```
 
 ## 3. Pierwsze zapytania

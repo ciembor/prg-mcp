@@ -31,7 +31,6 @@ const poland2180Envelope = [-50_000, -100_000, 1_100_000, 1_100_000] as const;
 
 export function validateSyncDataset(context: SyncValidationContext): void {
   const ids = new Set<string>();
-  const localityIds = new Set(context.records.flatMap((record) => record.localityId ? [record.localityId] : []));
   const streetIds = new Set(context.records.filter((record) => record.recordType === "street").map((record) => record.objectId));
 
   for (const record of context.records) {
@@ -41,9 +40,6 @@ export function validateSyncDataset(context: SyncValidationContext): void {
     validateBbox(record);
     if (record.recordType === "address" && record.streetId && streetIds.size > 0 && !streetIds.has(record.streetId)) {
       throw validationError("Address refers to a street absent from the imported scope.", "BROKEN_REFERENCE", record);
-    }
-    if (record.recordType === "address" && record.localityId && localityIds.size > 0 && !localityIds.has(record.localityId)) {
-      throw validationError("Address refers to a locality absent from the imported scope.", "BROKEN_REFERENCE", record);
     }
   }
 

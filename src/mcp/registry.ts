@@ -20,10 +20,9 @@ import { healthTool } from "../features/health/index.js";
 import { createListLayersTool } from "../features/list-layers/index.js";
 import { createServerStatusTool } from "../features/server-status/index.js";
 import { createSourceStatusTool, type SourceStatusProbe } from "../features/source-status/index.js";
-import { createSyncDataTool, type SyncDataRunner } from "../features/sync-data/index.js";
 import { loadPrgConfig, type PrgConfig } from "../runtime/config.js";
 
-export type RegistryServices = { readonly sourceStatusProbe?: SourceStatusProbe; readonly syncDataRunner?: SyncDataRunner };
+export type RegistryServices = { readonly sourceStatusProbe?: SourceStatusProbe };
 
 export function createRegistry(config: PrgConfig, services: RegistryServices = {}) {
   return createCapabilityRegistry([
@@ -42,7 +41,6 @@ export function createRegistry(config: PrgConfig, services: RegistryServices = {
     createSearchStreetsTool(config),
     createServerStatusTool(config),
     createSourceStatusTool(config, services.sourceStatusProbe),
-    createSyncDataTool(config, services.syncDataRunner),
   ]);
 }
 

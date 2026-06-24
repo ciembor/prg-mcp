@@ -27,29 +27,53 @@ export function createSqliteSnapshotStore(catalogPath: string): SnapshotStore {
       ).get(datasetKey, scope) as SnapshotRow | undefined;
       return row && toMetadata(row);
     }),
-    save: async (metadata) => withDatabase(catalogPath, (database) => {
-      database.prepare(`
-        insert into snapshots(dataset_key, scope, state_date, downloaded_at, checked_at, etag, last_modified, sha256, record_count, schema_fingerprint, adapter_version, source_url, archive_year)
-        values (@datasetKey, @scope, @stateDate, @downloadedAt, @checkedAt, @etag, @lastModified, @sha256, @recordCount, @schemaFingerprint, @adapterVersion, @sourceUrl, @archiveYear)
-        on conflict(dataset_key, scope, state_date) do update set
-          downloaded_at=excluded.downloaded_at, checked_at=excluded.checked_at, etag=excluded.etag,
-          last_modified=excluded.last_modified, sha256=excluded.sha256, record_count=excluded.record_count,
-          schema_fingerprint=excluded.schema_fingerprint, adapter_version=excluded.adapter_version, source_url=excluded.source_url
-      `).run({
-        adapterVersion: metadata.adapterVersion,
-        archiveYear: metadata.archiveYear ?? null,
-        checkedAt: metadata.checkedAt,
-        datasetKey: metadata.datasetKey,
-        downloadedAt: metadata.downloadedAt,
-        etag: metadata.etag ?? null,
-        lastModified: metadata.lastModified ?? null,
-        recordCount: metadata.recordCount,
-        schemaFingerprint: metadata.schemaFingerprint,
-        scope: metadata.scope,
-        sha256: metadata.sha256,
-        sourceUrl: metadata.sourceUrl,
-        stateDate: metadata.stateDate ?? null,
-      });
+    save: async (metadata, target) => withDatabase(catalogPath, (database) => {
+      database.transaction(() => {
+        database.prepare(`
+          insert into snapshots(dataset_key, scope, state_date, downloaded_at, checked_at, etag, last_modified, sha256, record_count, schema_fingerprint, adapter_version, source_url, archive_year)
+          values (@datasetKey, @scope, @stateDate, @downloadedAt, @checkedAt, @etag, @lastModified, @sha256, @recordCount, @schemaFingerprint, @adapterVersion, @sourceUrl, @archiveYear)
+          on conflict(dataset_key, scope, state_date) do update set
+            downloaded_at=excluded.downloaded_at, checked_at=excluded.checked_at, etag=excluded.etag,
+            last_modified=excluded.last_modified, sha256=excluded.sha256, record_count=excluded.record_count,
+            schema_fingerprint=excluded.schema_fingerprint, adapter_version=excluded.adapter_version, source_url=excluded.source_url
+        `).run({
+          adapterVersion: metadata.adapterVersion,
+          archiveYear: metadata.archiveYear ?? null,
+          checkedAt: metadata.checkedAt,
+          datasetKey: metadata.datasetKey,
+          downloadedAt: metadata.downloadedAt,
+          etag: metadata.etag ?? null,
+          lastModified: metadata.lastModified ?? null,
+          recordCount: metadata.recordCount,
+          schemaFingerprint: metadata.schemaFingerprint,
+          scope: metadata.scope,
+          sha256: metadata.sha256,
+          sourceUrl: metadata.sourceUrl,
+          stateDate: metadata.stateDate ?? null,
+        });
+
+        const snapshot = database.prepare(`
+          select id
+          from snapshots
+          where dataset_key = @datasetKey
+            and scope = @scope
+            and ((state_date is null and @stateDate is null) or state_date = @stateDate)
+          order by downloaded_at desc, id desc
+          limit 1
+        `).get({ datasetKey: metadata.datasetKey, scope: metadata.scope, stateDate: metadata.stateDate ?? null }) as { id: number };
+        const [scopeType, ...scopeCodeParts] = metadata.scope.split(":");
+
+        database.prepare(`
+          insert into installed_coverage(layer_id, scope_type, scope_code, snapshot_id, completeness)
+          values (@layerId, @scopeType, @scopeCode, @snapshotId, 'complete')
+          on conflict(layer_id, scope_type, scope_code, snapshot_id) do update set completeness=excluded.completeness
+        `).run({
+          layerId: target.layer.layerId,
+          scopeCode: scopeCodeParts.join(":"),
+          scopeType,
+          snapshotId: snapshot.id,
+        });
+      })();
     }),
   };
 }

@@ -21,7 +21,7 @@ export type SearchAreasResult = {
 };
 
 export async function searchAreas(config: PrgConfig, input: SearchAreasInput): Promise<SearchAreasResult> {
-  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp sync --profile administrative --mode missing");
+  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp setup --profile administrative");
 
   if (input.layerId && !getPrgLayer(input.layerId)) {
     return { areas: [] };
@@ -47,8 +47,9 @@ export async function searchAreas(config: PrgConfig, input: SearchAreasInput): P
 }
 
 function searchByText(database: Database.Database, input: SearchAreasInput): AreaRow[] {
+  const limit = Math.min(input.limit ?? 20, 100);
   const matches = searchAreaNames(database, {
-    limit: Math.min(input.limit ?? 20, 100),
+    limit: Math.min(Math.max(limit * 20, 100), 1_000),
     query: input.query ?? "",
     snapshotId: input.snapshotId,
   });
@@ -77,7 +78,7 @@ function searchByText(database: Database.Database, input: SearchAreasInput): Are
       validOn: input.validOn ?? null,
     }) as AreaRow[];
 
-  return rows;
+  return rows.slice(0, limit);
 }
 
 function searchByFilters(database: Database.Database, input: SearchAreasInput): AreaRow[] {

@@ -141,7 +141,7 @@ export function readAddressById(config: PrgConfig, addressId: string): AddressSu
   if (!database) {
     throw new DataNotInstalledError(
       `PRG address data is not installed for voivodeship ${identifier.voivodeshipCode}.`,
-      `prg-mcp sync --profile addresses --teryt ${identifier.voivodeshipCode} --mode missing`,
+      `prg-mcp setup --profile addresses --teryt ${identifier.voivodeshipCode}`,
     );
   }
 
@@ -165,7 +165,7 @@ export function readStreetById(config: PrgConfig, streetId: string): StreetWithG
   if (!database) {
     throw new DataNotInstalledError(
       `PRG street data is not installed for voivodeship ${identifier.voivodeshipCode}.`,
-      `prg-mcp sync --profile addresses --teryt ${identifier.voivodeshipCode} --mode missing`,
+      `prg-mcp setup --profile addresses --teryt ${identifier.voivodeshipCode}`,
     );
   }
 

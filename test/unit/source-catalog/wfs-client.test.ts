@@ -154,6 +154,36 @@ describe("WFS 2.0 client", () => {
     expect(new URL(requestedUrls[1] ?? "").searchParams.get("STARTINDEX")).toBe("2");
   });
 
+  it("continues WFS pagination without next links while numberMatched says more data exists", async () => {
+    const requestedUrls: string[] = [];
+    const client = createWfsClient({
+      endpoint,
+      fetch: createFetchMock(requestedUrls, [
+        response(featureCollection({ numberMatched: "3", numberReturned: 2 })),
+        response(featureCollection({ numberMatched: "3", numberReturned: 1 })),
+      ]),
+      retry: { retries: 0 },
+    });
+
+    const pages = [];
+    for await (const page of client.getFeaturePages({ typeNames: ["ms:A00_Granice_panstwa"], count: 2 })) {
+      pages.push(page);
+    }
+
+    expect(pages).toHaveLength(2);
+    expect(new URL(requestedUrls[1] ?? "").searchParams.get("STARTINDEX")).toBe("2");
+  });
+
+  it("rejects non-finite WFS page counters", async () => {
+    const client = createWfsClient({
+      endpoint,
+      fetch: createFetchMock([], [response(featureCollection({ numberMatched: "NaN", numberReturned: 1 }))]),
+      retry: { retries: 0 },
+    });
+
+    await expect(client.getFeaturePage({ typeNames: ["ms:A00_Granice_panstwa"], count: 2 })).rejects.toThrow("invalid numberMatched");
+  });
+
   it("retries transient WFS errors and reports stable failures", async () => {
     const requestedUrls: string[] = [];
     const retryDelays: number[] = [];

@@ -30,7 +30,7 @@ export type SyncPublisher = {
 
 export type SnapshotStore = {
   readonly find: (datasetKey: string, scope: string) => Promise<SnapshotMetadata | undefined>;
-  readonly save: (metadata: SnapshotMetadata) => Promise<void>;
+  readonly save: (metadata: SnapshotMetadata, target: SyncTarget) => Promise<void>;
 };
 
 export type SyncTargetResult = {
@@ -74,7 +74,7 @@ async function synchronizeTarget(plan: SyncPlan, target: SyncTarget, dependencie
     validateSyncDataset({ target, metadata, records: dataset.records });
     staged = await dependencies.publisher.stage(target, dataset, metadata);
     await dependencies.publisher.publish(staged);
-    await dependencies.snapshots.save(metadata);
+    await dependencies.snapshots.save(metadata, target);
     await dependencies.publisher.finalize?.(staged);
     return { datasetKey: target.datasetKey, scope, status: "published", recordCount: dataset.records.length };
   } catch (error) {

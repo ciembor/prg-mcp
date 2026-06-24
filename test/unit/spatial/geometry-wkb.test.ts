@@ -40,6 +40,10 @@ describe("geometry operations and WKB", () => {
     expect(() => decodeWkb(Uint8Array.from([1, 99, 0, 0, 0]))).toThrow(WkbError);
   });
 
+  it("decodes big-endian MultiPoint WKB", () => {
+    expect(decodeWkb(bigEndianMultiPoint())).toEqual(multiPoint);
+  });
+
   it("computes bbox and centroid for point, line and polygon holes", () => {
     expect(bboxOfGeometry(point)).toEqual({
       maxX: 1,
@@ -163,3 +167,27 @@ const multiPolygon: MultiPolygonGeometry = {
   ],
   type: "MultiPolygon",
 };
+
+function bigEndianMultiPoint(): Uint8Array {
+  const buffer = Buffer.alloc(1 + 4 + 4 + (1 + 4 + 16) * 2);
+  let offset = 0;
+  buffer.writeUInt8(0, offset);
+  offset += 1;
+  buffer.writeUInt32BE(4, offset);
+  offset += 4;
+  buffer.writeUInt32BE(2, offset);
+  offset += 4;
+
+  for (const [x, y] of multiPoint.coordinates) {
+    buffer.writeUInt8(0, offset);
+    offset += 1;
+    buffer.writeUInt32BE(1, offset);
+    offset += 4;
+    buffer.writeDoubleBE(x, offset);
+    offset += 8;
+    buffer.writeDoubleBE(y, offset);
+    offset += 8;
+  }
+
+  return buffer;
+}

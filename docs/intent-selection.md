@@ -12,7 +12,7 @@ Ten dokument pomaga modelowi wybrać narzędzie PRG MCP bez zgadywania nazw wars
 | "Co jest najbliższym adresem dla współrzędnych?" | `reverse_address` | nie zwraca trafienia poza limitem promienia |
 | "Pokaż geometrię gminy" | `get_area_geometry` dla małej geometrii, `prg-mcp export` dla pełnej | pełny GeoJSON przez CLI |
 | "Jakie warstwy mam lokalnie?" | `list_layers` albo `prg-mcp coverage` | bez sieci |
-| "Czy dane źródłowe się zmieniły?" | `source_status` z remote check albo `prg-mcp source-status --remote` | nie pobiera dużych danych |
+| "Czy dane źródłowe się zmieniły?" | `source_status` z remote check, jeśli proces ma skonfigurowany probe | nie pobiera dużych danych |
 
 ## Granice PRG
 

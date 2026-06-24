@@ -31,7 +31,6 @@ function publicToolInputs(areaId: string, addressId: string, streetId: string): 
   search_streets: { query: "Żurawia", voivodeshipCodes: ["14"] },
   server_status: {},
   source_status: {},
-  sync_data: { mode: "missing", profile: "administrative" },
   };
 }
 
@@ -51,7 +50,6 @@ const invalidInputErrors: Readonly<Record<string, string>> = {
   search_streets: "search_streets received invalid input.",
   server_status: "server_status received invalid input.",
   source_status: "source_status received invalid input.",
-  sync_data: "sync_data received invalid input.",
 };
 
 describe("public capability contracts", () => {
@@ -176,19 +174,7 @@ function createContractApp() {
   const dataDir = mkdtempSync(join(tmpdir(), "prg-mcp-public-contract-"));
   createAreaFixture(dataDir);
   createAddressFixture(dataDir);
-  return createApp(loadPrgConfig({ configDir: dataDir, dataDir, logLevel: "silent", port: 0, transport: "stdio" }, {}), {
-    syncDataRunner: {
-      run: async (plan) => ({
-        runId: "contract-run",
-        status: "complete",
-        targets: plan.targets.map((target) => ({
-          datasetKey: target.datasetKey,
-          scope: `${target.scope.type}:${target.scope.code}`,
-          status: "unchanged",
-        })),
-      }),
-    },
-  });
+  return createApp(loadPrgConfig({ configDir: dataDir, dataDir, logLevel: "silent", port: 0, transport: "stdio" }, {}));
 }
 
 function createAreaFixture(dataDir: string): void {

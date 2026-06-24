@@ -5,7 +5,7 @@ import { assertDataInstalled, databaseFileExists } from "../../../shared/data-re
 import { readAreaById, toAreaSummary, toAreaWithGeometry, type AreaSummary, type AreaWithGeometry } from "./area-model.js";
 
 export async function getArea(config: PrgConfig, areaId: string): Promise<AreaSummary> {
-  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp sync --profile administrative --mode missing");
+  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp setup --profile administrative");
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
 
   try {
@@ -16,7 +16,7 @@ export async function getArea(config: PrgConfig, areaId: string): Promise<AreaSu
 }
 
 export async function getAreaWithGeometry(config: PrgConfig, areaId: string): Promise<AreaWithGeometry> {
-  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp sync --profile administrative --mode missing");
+  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp setup --profile administrative");
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
 
   try {

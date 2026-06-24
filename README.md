@@ -11,7 +11,7 @@ Obslugiwane zbiory:
   prokuratorskie, sluzbowe, urzedowe i morskie;
 - `A07` - punkty adresowe PRG;
 - `A08` - ulice PRG;
-- lokalne pokrycie danych, status zrodel i synchronizacja zakresow.
+- lokalne pokrycie danych, status zrodel i planowanie zakresow.
 
 Pakiet npm: `prg-mcp`.
 
@@ -244,7 +244,7 @@ pustej listy. Zwracaja blad `DATA_NOT_INSTALLED` z dokladna komenda
 synchronizacji, np.:
 
 ```text
-PRG address data is not installed for the requested scope. Run: prg-mcp sync --profile addresses --teryt 14 --mode missing
+PRG address data is not installed for the requested scope. Run: prg-mcp setup --profile addresses --teryt 14
 ```
 
 ## Co Jest W PRG, A Czego Nie Ma
@@ -279,8 +279,9 @@ pocztowych.
 
 ## Narzedzia MCP
 
-Wszystkie narzedzia zwracaja `structuredContent`. Odczyty sa read-only;
-`sync_data` jest jedynym publicznym narzedziem zapisu.
+Wszystkie narzedzia zwracaja `structuredContent`. Publiczne narzedzia MCP sa
+obecnie read-only. Runner synchronizacji nie jest wystawiony jako `sync_data`,
+dopoki zrodla i publisher nie sa spiete produkcyjnie.
 
 Narzedzia zwracajace dane PRG dolaczaja:
 
@@ -357,20 +358,7 @@ Input:
 }
 ```
 
-#### `sync_data`
-
-Planuje i uruchamia jawna synchronizacje profilu, warstw i zakresow TERYT.
-
-Input:
-
-```json
-{
-  "profile": "administrative",
-  "mode": "missing"
-}
-```
-
-Tryby:
+Planowane tryby synchronizacji:
 
 ```text
 missing  pobierz tylko brakujace zakresy
@@ -378,7 +366,7 @@ stale    pobierz nieaktualne zakresy
 force    przebuduj wskazane zakresy
 ```
 
-Profile:
+Profile planowania:
 
 ```text
 administrative  podstawowe granice administracyjne
@@ -621,10 +609,11 @@ Claude Desktop oraz VS Code uzywaja konfiguracji `mcpServers` pokazanej wyzej.
 W srodowisku, ktore czysci cache miedzy uruchomieniami, ustaw staly
 `MCP_DATA_DIR`, inaczej serwer moze startowac bez lokalnych danych.
 
-## Pierwsza Synchronizacja
+## Plan Danych
 
 Serwer moze zwracac status bez lokalnych baz, ale wyszukiwanie i lookupy
-wymagaja lokalnych plikow SQLite.
+wymagaja lokalnych plikow SQLite. Publiczny runner synchronizacji nie jest
+jeszcze spakowany; `setup` zwraca estymacje i `syncAvailable: false`.
 
 Podstawowe komendy CLI:
 
@@ -636,28 +625,23 @@ prg-mcp source-status
 prg-mcp doctor
 ```
 
-Rekomendowany start:
+Rekomendowany plan startowy:
 
 ```bash
 prg-mcp setup
-prg-mcp sync --profile administrative --mode missing
 ```
 
-Adresy synchronizuj dla jawnego zakresu:
+Plan adresow dla jawnego zakresu:
 
 ```bash
-prg-mcp sync --profile addresses --teryt 14 --mode missing
+prg-mcp setup --profile addresses --teryt 14
 ```
 
 Pelna instalacja Polski jest duza i wymaga jawnego potwierdzenia:
 
 ```bash
 prg-mcp setup --profile poland-full --confirm-poland-full
-prg-mcp sync --profile poland-full --mode missing
 ```
-
-Synchronizacja zapisuje dane atomowo. Proces czytajacy powinien zobaczyc albo
-stara baze, albo nowa, nigdy czesciowo zapisany plik.
 
 ## CLI
 
@@ -671,8 +655,6 @@ prg-mcp status
 prg-mcp coverage
 prg-mcp source-status
 prg-mcp doctor
-prg-mcp sync --profile administrative --mode missing
-prg-mcp sync --profile addresses --teryt 14 --mode missing
 prg-mcp call list_layers '{}'
 prg-mcp call search_areas '{"query":"Warszawa","category":"administrative","limit":5}'
 prg-mcp call source_status '{"checkRemote":false}'

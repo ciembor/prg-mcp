@@ -1,7 +1,7 @@
 import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
-import { normalizePolishSearchText, searchAddresses as searchAddressFts } from "../../search/index.js";
+import { searchAddresses as searchAddressFts } from "../../search/index.js";
 import { listInstalledAddressShards, openAddressShard, toAddressSummary, type AddressRow, type AddressSummary } from "./address-model.js";
 
 export type AddressStructuredQuery = {
@@ -61,8 +61,8 @@ export async function searchAddresses(config: PrgConfig, input: SearchAddressesI
 
 function addressSyncCommand(voivodeshipCodes?: readonly PrgVoivodeshipCode[]): string {
   return voivodeshipCodes && voivodeshipCodes.length === 1
-    ? `prg-mcp sync --profile addresses --teryt ${voivodeshipCodes[0]} --mode missing`
-    : "prg-mcp sync --profile addresses --mode missing";
+    ? `prg-mcp setup --profile addresses --teryt ${voivodeshipCodes[0]}`
+    : "prg-mcp setup --profile addresses";
 }
 
 function validateSearchInput(input: SearchAddressesInput): void {
@@ -82,8 +82,8 @@ function searchStructuredObjectIds(database: import("better-sqlite3").Database, 
       where (@municipalityCode is null or municipality_code = @municipalityCode)
         and (@localityId is null or locality_id = @localityId)
         and (@streetId is null or street_id = @streetId)
-        and (@localityName is null or lower(locality_name) = lower(@localityName) or @normalizedLocalityName = @storedNormalizedLocalityName)
-        and (@streetName is null or street_name is null or lower(street_name) = lower(@streetName) or @normalizedStreetName = @storedNormalizedStreetName)
+        and (@localityName is null or lower(locality_name) = lower(@localityName))
+        and (@streetName is null or street_name is null or lower(street_name) = lower(@streetName))
         and (@buildingNumber is null or lower(building_number) = lower(@buildingNumber))
         and (@postalCode is null or postal_code = @postalCode)
       order by locality_name collate nocase asc, street_name collate nocase asc, building_number collate nocase asc, object_id asc
@@ -95,11 +95,7 @@ function searchStructuredObjectIds(database: import("better-sqlite3").Database, 
       localityId: query.localityId ?? null,
       localityName: query.localityName ?? null,
       municipalityCode: query.municipalityCode ?? null,
-      normalizedLocalityName: query.localityName ? normalizePolishSearchText(query.localityName) : null,
-      normalizedStreetName: query.streetName ? normalizePolishSearchText(query.streetName) : null,
       postalCode: query.postalCode ?? null,
-      storedNormalizedLocalityName: query.localityName ? normalizePolishSearchText(query.localityName) : null,
-      storedNormalizedStreetName: query.streetName ? normalizePolishSearchText(query.streetName) : null,
       streetId: query.streetId ?? null,
       streetName: query.streetName ?? null,
     }) as Array<{ object_id: string }>).map((row) => row.object_id);

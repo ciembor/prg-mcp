@@ -39,4 +39,4 @@ Przed wydaniem zweryfikować:
 - Jeżeli paczka npm ma błąd krytyczny przed szerokim użyciem, oznaczyć ją jako deprecated z krótkim powodem i opublikować patch.
 - Nie usuwać wydań używanych przez użytkowników, jeśli można opublikować poprawkę.
 - Lokalna baza użytkownika pozostaje poza paczką npm; rollback kodu nie usuwa danych.
-- Dla błędów synchronizacji zalecać `prg-mcp sync --mode force` tylko dla dotkniętego profilu/zakresu.
+- Dla błędów synchronizacji zalecać przebudowę tylko dotkniętego profilu/zakresu po podłączeniu produkcyjnego runnera.

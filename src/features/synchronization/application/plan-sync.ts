@@ -11,7 +11,7 @@ import {
 } from "../domain/sync-model.js";
 
 const profileLayerIds: Readonly<Record<Exclude<SyncProfile, "administrative-history">, readonly string[]>> = {
-  administrative: range("A", 0, 4),
+  administrative: range("A", 0, 6),
   "cadastre-boundaries": range("A", 5, 6),
   jurisdictions: [
     ...range("R", 1, 2), ...range("S", 1, 4), ...range("P", 1, 3),

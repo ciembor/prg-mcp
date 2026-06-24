@@ -41,7 +41,7 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     }
 
     try {
-      const rows = database
+      let rows = database
         .prepare(`
           select addresses.*
           from addresses_rtree
@@ -60,6 +60,25 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
           minX: input.x - radiusMeters,
           minY: input.y - radiusMeters,
         }) as AddressRow[];
+
+      if (rows.length === 0) {
+        rows = database
+          .prepare(`
+            select *
+            from addresses
+            where x between @minX and @maxX
+              and y between @minY and @maxY
+            order by object_id asc
+            limit @maxCandidates
+          `)
+          .all({
+            maxCandidates,
+            maxX: input.x + radiusMeters,
+            maxY: input.y + radiusMeters,
+            minX: input.x - radiusMeters,
+            minY: input.y - radiusMeters,
+          }) as AddressRow[];
+      }
 
       if (rows.length >= maxCandidates) {
         throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
@@ -86,8 +105,8 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
 
 function addressSyncCommand(voivodeshipCodes?: readonly PrgVoivodeshipCode[]): string {
   return voivodeshipCodes && voivodeshipCodes.length === 1
-    ? `prg-mcp sync --profile addresses --teryt ${voivodeshipCodes[0]} --mode missing`
-    : "prg-mcp sync --profile addresses --mode missing";
+    ? `prg-mcp setup --profile addresses --teryt ${voivodeshipCodes[0]}`
+    : "prg-mcp setup --profile addresses";
 }
 
 function distance(x1: number, y1: number, x2: number, y2: number): number {

@@ -111,11 +111,6 @@ describe("prg-mcp CLI contract", () => {
           name: "source_status",
           policy: "read",
         },
-        {
-          description: "Explicitly synchronizes selected PRG profiles, layers and TERYT scopes using missing, stale or force mode.",
-          name: "sync_data",
-          policy: "write",
-        },
       ],
     });
   });
@@ -145,15 +140,24 @@ describe("prg-mcp CLI contract", () => {
     });
 
     expect(JSON.parse(stdout.content)).toMatchObject({
-      command: "prg-mcp sync --profile administrative --mode missing",
       profile: "administrative",
-      targetCount: 5,
+      syncAvailable: false,
+      syncStatus: "not_packaged",
+      targetCount: 7,
     });
     expect(stderr.content).toContain("Recommended starter profile: administrative.");
   });
 
   it("requires explicit confirmation for poland-full setup", async () => {
     await expect(runCli(["setup", "--profile", "poland-full"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout: new MemoryWritable(),
+    })).rejects.toThrow("poland-full requires --confirm-poland-full");
+  });
+
+  it("does not accept --confirm-poland-full=false as confirmation", async () => {
+    await expect(runCli(["setup", "--profile", "poland-full", "--confirm-poland-full=false"], {
       env: { MCP_DATA_DIR: contractDataDir },
       stderr: new MemoryWritable(),
       stdout: new MemoryWritable(),

@@ -24,7 +24,7 @@ export type LocatePointResult = {
 };
 
 export async function locatePoint(config: PrgConfig, input: LocatePointInput): Promise<LocatePointResult> {
-  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp sync --profile administrative --mode missing");
+  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp setup --profile administrative");
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
 
   try {

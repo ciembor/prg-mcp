@@ -6,7 +6,7 @@ Uruchom:
 
 ```bash
 prg-mcp setup
-prg-mcp sync --profile administrative --mode missing
+prg-mcp setup --profile administrative
 ```
 
 ## Brak wyniku zamiast danych

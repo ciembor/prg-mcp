@@ -26,7 +26,7 @@ Tablica jest aktualizowana w tym samym commicie, który zamyka bieżący feature
 | PRG-705 | closed | setup estimates, administrative recommendation and poland-full confirmation |
 | PRG-704 | closed | CLI GeoJSON export outside MCP context |
 | PRG-703 | closed | coverage, source-status and doctor CLI commands |
-| PRG-702 | closed | sync CLI command backed by sync_data use case |
+| PRG-702 | reopened | sync runner not publicly exposed until source adapters and publisher are wired |
 | PRG-701 | closed | serve/status/tools/call/setup CLI surface |
 | PRG-101 | closed | statyczny katalog 54 warstw PRG |
 | PRG-011 | closed | generator-first: komendy, kontrola kontraktowa i procedura odstępstwa |

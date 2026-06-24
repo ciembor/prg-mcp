@@ -9,8 +9,7 @@ import { encodeAreaId } from "../features/areas/application/area-model.js";
 import { listLayers } from "../features/list-layers/index.js";
 import { getServerStatus } from "../features/server-status/index.js";
 import { getSourceStatus } from "../features/source-status/index.js";
-import { syncData, unavailableSyncDataRunner, type SyncDataInput } from "../features/sync-data/index.js";
-import { planSync, syncModes, syncProfiles, type SyncMode, type SyncProfile } from "../features/synchronization/index.js";
+import { planSync, syncProfiles, type SyncProfile } from "../features/synchronization/index.js";
 import { transform2180To4326, type PrgGeometry, type Position } from "../features/spatial/index.js";
 import type { PrgConfig } from "../runtime/config.js";
 
@@ -24,7 +23,6 @@ type GeoJsonFeature = {
 export function createPrgCliCommands(): readonly McpCliCommand<PrgConfig>[] {
   return [
     command("status", async ({ config, io }) => writeJson(io.stdout, await getServerStatus(config))),
-    command("sync", async ({ args, config, io }) => writeJson(io.stdout, await runSyncCommand(config, parseOptions(args)))),
     command("coverage", async ({ config, io }) => writeJson(io.stdout, await runCoverageCommand(config))),
     command("source-status", async ({ args, config, io }) => writeJson(io.stdout, await getSourceStatus(config, parseOptions(args).has("remote")))),
     command("doctor", async ({ config, io }) => writeJson(io.stdout, await runDoctorCommand(config))),
@@ -35,11 +33,6 @@ export function createPrgCliCommands(): readonly McpCliCommand<PrgConfig>[] {
 
 function command(name: string, run: McpCliCommand<PrgConfig>["run"]): McpCliCommand<PrgConfig> {
   return { name, run };
-}
-
-async function runSyncCommand(config: PrgConfig, options: OptionMap) {
-  const input = readSyncInput(options);
-  return syncData(config, input, unavailableSyncDataRunner);
 }
 
 async function runCoverageCommand(config: PrgConfig) {
@@ -62,7 +55,7 @@ async function runDoctorCommand(config: PrgConfig) {
   const issues = [
     ...(!status.sqlite.fts5 ? ["SQLite FTS5 extension is unavailable."] : []),
     ...(!status.sqlite.rtree ? ["SQLite R-tree extension is unavailable."] : []),
-    ...(sourceStatus.installedLayerCount === 0 ? ["No PRG layers are installed. Run prg-mcp setup or prg-mcp sync --profile administrative."] : []),
+    ...(sourceStatus.installedLayerCount === 0 ? ["No PRG layers are installed. Run prg-mcp setup --profile administrative and configure a synchronization runner."] : []),
   ];
   return {
     ok: issues.length === 0,
@@ -109,7 +102,7 @@ async function runExportCommand(config: PrgConfig, options: OptionMap) {
 async function runSetupCommand(config: PrgConfig, options: OptionMap, io: CliIo) {
   const profile = (option(options, "profile") ?? "administrative") as SyncProfile;
   if (!isSyncProfile(profile)) throw new Error(`Invalid sync profile: ${profile}.`);
-  const confirmFull = options.has("confirm-poland-full");
+  const confirmFull = option(options, "confirm-poland-full") === "true";
   if (profile === "poland-full" && !confirmFull) {
     throw new Error("poland-full requires --confirm-poland-full. Recommended starter profile is administrative.");
   }
@@ -123,25 +116,12 @@ async function runSetupCommand(config: PrgConfig, options: OptionMap, io: CliIo)
   });
   writeStderr(io, config, `Recommended starter profile: administrative. Planned profile: ${profile}.\n`);
   return {
-    command: `prg-mcp sync --profile ${profile} --mode missing`,
     estimatedDiskBytes: plan.estimatedDiskBytes,
     estimatedDownloadBytes: plan.estimatedDownloadBytes,
     profile,
+    syncAvailable: false,
+    syncStatus: "not_packaged",
     targetCount: plan.targets.length,
-  };
-}
-
-function readSyncInput(options: OptionMap): SyncDataInput {
-  const mode = (option(options, "mode") ?? "missing") as SyncMode;
-  const profile = option(options, "profile") as SyncProfile | undefined;
-  if (!isSyncMode(mode)) throw new Error(`Invalid sync mode: ${mode}.`);
-  if (profile !== undefined && !isSyncProfile(profile)) throw new Error(`Invalid sync profile: ${profile}.`);
-  return {
-    archiveYear: readIntegerOption(options, "archive-year"),
-    layerIds: values(options, "layer"),
-    mode,
-    profile,
-    teryt: values(options, "teryt"),
   };
 }
 
@@ -225,10 +205,6 @@ function parseInteger(value: string, name: string): number {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed)) throw new Error(`--${name} must be an integer.`);
   return parsed;
-}
-
-function isSyncMode(value: string): value is SyncMode {
-  return (syncModes as readonly string[]).includes(value);
 }
 
 function isSyncProfile(value: string): value is SyncProfile {

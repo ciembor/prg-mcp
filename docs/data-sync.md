@@ -1,6 +1,8 @@
 # Synchronizacja danych
 
-PRG MCP jest local-first. Narzędzia odczytowe nie pobierają danych z sieci i nie modyfikują bazy. Dane instaluje wyłącznie jawne `sync_data` albo CLI `prg-mcp sync`.
+PRG MCP jest local-first. Narzędzia odczytowe nie pobierają danych z sieci i nie modyfikują bazy.
+
+W tej paczce publiczny runner synchronizacji nie jest jeszcze wystawiony. `setup`, `coverage`, `source-status` i planner synchronizacji opisują zakresy i wymagania, ale nie wykonują pobierania danych bez skonfigurowanego runnera źródłowego.
 
 ## Profile
 
@@ -8,14 +10,13 @@ Zalecany start:
 
 ```bash
 prg-mcp setup
-prg-mcp sync --profile administrative --mode missing
 ```
 
 Profile:
 
 | Profil | Zakres | Uwagi |
 | --- | --- | --- |
-| `administrative` | `A00-A04` | mały start dla granic i point-in-polygon |
+| `administrative` | `A00-A06` | mały start dla granic i point-in-polygon |
 | `administrative-history` | archiwalne `A00-A04` | wymaga `--archive-year` |
 | `cadastre-boundaries` | `A05-A06` | jednostki i obręby ewidencyjne |
 | `jurisdictions` | `R`, `S`, `P`, `K`, `U` | właściwość terytorialna |
@@ -24,19 +25,11 @@ Profile:
 | `boundaries-full` | 52 warstwy WFS | bez adresów |
 | `poland-full` | 54 warstwy | bardzo duży profil; `setup` wymaga `--confirm-poland-full` |
 
-## Komendy CLI
+## Planowane komendy runnera
 
-```bash
-prg-mcp sync --profile addresses --teryt 146501 --mode missing
-prg-mcp sync --profile jurisdictions --mode stale
-prg-mcp sync --layer A03 --layer S03 --mode force
-prg-mcp source-status
-prg-mcp source-status --remote
-prg-mcp coverage
-prg-mcp doctor
-```
+Runner produkcyjny musi zostać podłączony przed przywróceniem publicznej komendy `prg-mcp sync`.
 
-`missing` instaluje braki, `stale` wykonuje tani check metadanych źródła, a `force` przebudowuje wskazany zakres. Zakres TERYT może być województwem, powiatem albo gminą; dla warstw WFS zakres inny niż kraj jest normalizowany do kraju, bo źródło jest publikowane warstwowo.
+Planowane tryby to `missing`, `stale` i `force`. Zakres TERYT może być województwem, powiatem albo gminą; dla warstw WFS zakres inny niż kraj jest normalizowany do kraju, bo źródło jest publikowane warstwowo.
 
 ## Eksport geometrii
 

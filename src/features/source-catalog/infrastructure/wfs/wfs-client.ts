@@ -159,7 +159,7 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
 
         yield page;
 
-        if (!page.next || page.numberReturned === 0) {
+        if (page.numberReturned === 0 || isLastPage(page, pageSize, startIndex)) {
           return;
         }
 
@@ -302,7 +302,7 @@ function parseWfsNumberAttribute(source: string, attributeName: string): number 
     return "unknown";
   }
 
-  return Number(value);
+  return parseWfsNonNegativeInteger(value, attributeName);
 }
 
 function parseRequiredNumericAttribute(source: string, attributeName: string): number {
@@ -312,7 +312,21 @@ function parseRequiredNumericAttribute(source: string, attributeName: string): n
     throw new Error(`WFS FeatureCollection is missing ${attributeName}.`);
   }
 
-  return Number(value);
+  return parseWfsNonNegativeInteger(value, attributeName);
+}
+
+function isLastPage(page: Pick<WfsFeaturePage, "next" | "numberMatched" | "numberReturned">, pageSize: number, startIndex: number): boolean {
+  if (page.next) return false;
+  if (page.numberMatched !== "unknown") return startIndex + page.numberReturned >= page.numberMatched;
+  return page.numberReturned < pageSize;
+}
+
+function parseWfsNonNegativeInteger(value: string, attributeName: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`WFS FeatureCollection has invalid ${attributeName}: ${value}.`);
+  }
+  return parsed;
 }
 
 function parseOptionalAttribute(source: string, attributeName: string): string | undefined {

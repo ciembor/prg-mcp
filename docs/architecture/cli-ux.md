@@ -1,11 +1,11 @@
 # CLI i doświadczenie użytkownika
 
-CLI jest cienką warstwą nad tymi samymi use case'ami, których używają narzędzia MCP. Dzięki temu `sync_data` i `prg-mcp sync` mają ten sam planner, walidację profili, zakresów TERYT i błędów.
+CLI jest cienką warstwą nad tymi samymi use case'ami, których używają narzędzia MCP. Publiczny runner synchronizacji nie jest jeszcze wystawiony; `setup` używa tego samego plannera i walidacji profili oraz zakresów TERYT.
 
 ## Komendy
 
 - `serve`, `tools`, `call` pochodzą z MCP Craftsman.
-- `status`, `setup`, `sync`, `coverage`, `source-status`, `doctor` i `export` są rozszerzeniami PRG.
+- `status`, `setup`, `coverage`, `source-status`, `doctor` i `export` są rozszerzeniami PRG.
 - Każda komenda użytkowa wypisuje JSON na stdout.
 - Diagnostyka idzie na stderr i respektuje `MCP_LOG_LEVEL=silent`.
 

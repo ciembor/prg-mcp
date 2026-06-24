@@ -1,6 +1,6 @@
 # Narzędzia MCP
 
-Wszystkie narzędzia zwracają `structuredContent`. Odczyty są read-only; `sync_data` jest jedynym publicznym narzędziem zapisu.
+Wszystkie narzędzia zwracają `structuredContent`. Publiczne narzędzia MCP są obecnie read-only; runner synchronizacji nie jest wystawiony jako `sync_data`, dopóki źródła i publisher nie są spięte produkcyjnie.
 
 Narzędzia zwracające dane PRG (`search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas`, `search_addresses`, `get_address`, `reverse_address`, `search_streets`, `get_street`) dołączają `source`, `datasetState`, `syncedAt` i `coverage`. Gdy wymagany lokalny zakres nie jest zainstalowany, zwracają błąd `DATA_NOT_INSTALLED` z komendą synchronizacji, zamiast pustego wyniku.
 
@@ -13,7 +13,6 @@ Narzędzia zwracające dane PRG (`search_areas`, `get_area`, `get_area_geometry`
 | `server_status` | katalog danych, pliki SQLite, FTS5/R-tree |
 | `source_status` | zainstalowane pokrycie i opcjonalny status źródeł |
 | `list_layers` | katalog 54 warstw i lokalna dostępność |
-| `sync_data` | jawna synchronizacja profilu, warstw i zakresów TERYT |
 
 ## Obszary
 

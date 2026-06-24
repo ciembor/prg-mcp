@@ -140,15 +140,15 @@ class WkbReader {
     }
 
     if (geometryType === multiPointType) {
-      return this.readMultiPoint();
+      return this.readMultiPoint(byteOrder);
     }
 
     if (geometryType === multiLineStringType) {
-      return this.readMultiLineString();
+      return this.readMultiLineString(byteOrder);
     }
 
     if (geometryType === multiPolygonType) {
-      return this.readMultiPolygon();
+      return this.readMultiPolygon(byteOrder);
     }
 
     throw new WkbError(`Unsupported WKB geometry type: ${geometryType}.`);
@@ -188,29 +188,29 @@ class WkbReader {
     };
   }
 
-  private readMultiPoint(): MultiPointGeometry {
+  private readMultiPoint(byteOrder: ByteOrder): MultiPointGeometry {
     return {
-      coordinates: this.readNestedGeometries("Point").map((geometry) => geometry.coordinates),
+      coordinates: this.readNestedGeometries("Point", byteOrder).map((geometry) => geometry.coordinates),
       type: "MultiPoint",
     };
   }
 
-  private readMultiLineString(): MultiLineStringGeometry {
+  private readMultiLineString(byteOrder: ByteOrder): MultiLineStringGeometry {
     return {
-      coordinates: this.readNestedGeometries("LineString").map((geometry) => geometry.coordinates),
+      coordinates: this.readNestedGeometries("LineString", byteOrder).map((geometry) => geometry.coordinates),
       type: "MultiLineString",
     };
   }
 
-  private readMultiPolygon(): MultiPolygonGeometry {
+  private readMultiPolygon(byteOrder: ByteOrder): MultiPolygonGeometry {
     return {
-      coordinates: this.readNestedGeometries("Polygon").map((geometry) => geometry.coordinates),
+      coordinates: this.readNestedGeometries("Polygon", byteOrder).map((geometry) => geometry.coordinates),
       type: "MultiPolygon",
     };
   }
 
-  private readNestedGeometries<TType extends PrgGeometry["type"]>(expectedType: TType): Array<Extract<PrgGeometry, { type: TType }>> {
-    const count = this.readUInt32("little");
+  private readNestedGeometries<TType extends PrgGeometry["type"]>(expectedType: TType, byteOrder: ByteOrder): Array<Extract<PrgGeometry, { type: TType }>> {
+    const count = this.readUInt32(byteOrder);
     const geometries: Array<Extract<PrgGeometry, { type: TType }>> = [];
 
     for (let index = 0; index < count; index += 1) {

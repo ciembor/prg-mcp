@@ -41,6 +41,10 @@ describe("P6 address tools", () => {
     })).resolves.toMatchObject({
       addresses: [{ buildingNumber: "12/14", localityName: "Wieliszew", streetName: null }],
     });
+    await expect(searchAddresses(config, {
+      structured: { buildingNumber: "7", localityName: "Warszawa" },
+      voivodeshipCodes: ["14"],
+    })).resolves.toMatchObject({ addresses: [] });
     await expect(searchAddresses(config, { query: "Warszawa", structured: { localityName: "Warszawa" } })).rejects.toThrow("exactly one");
   });
 
@@ -62,6 +66,15 @@ describe("P6 address tools", () => {
   it("reverse-searches by expanding R-tree bbox, exact distance and hard limits", async () => {
     const { config } = await createAddressFixture();
 
+    await expect(reverseAddress(config, { radiusMeters: 20, voivodeshipCodes: ["14"], x: 637807, y: 486708 })).resolves.toMatchObject({
+      addresses: [{ buildingNumber: "12A", distanceMeters: 0 }],
+    });
+    const database = new Database(join(config.dataDir, "addresses-14.sqlite"));
+    try {
+      database.prepare("delete from addresses_rtree").run();
+    } finally {
+      database.close();
+    }
     await expect(reverseAddress(config, { radiusMeters: 20, voivodeshipCodes: ["14"], x: 637807, y: 486708 })).resolves.toMatchObject({
       addresses: [{ buildingNumber: "12A", distanceMeters: 0 }],
     });

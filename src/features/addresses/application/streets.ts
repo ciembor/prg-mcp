@@ -42,8 +42,8 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
 
 function addressSyncCommand(voivodeshipCodes?: readonly PrgVoivodeshipCode[]): string {
   return voivodeshipCodes && voivodeshipCodes.length === 1
-    ? `prg-mcp sync --profile addresses --teryt ${voivodeshipCodes[0]} --mode missing`
-    : "prg-mcp sync --profile addresses --mode missing";
+    ? `prg-mcp setup --profile addresses --teryt ${voivodeshipCodes[0]}`
+    : "prg-mcp setup --profile addresses";
 }
 
 export async function getStreet(config: PrgConfig, streetId: string): Promise<StreetWithGeometry> {

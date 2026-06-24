@@ -27,6 +27,9 @@ export type SourceStatusProbe = () => Promise<readonly { readonly datasetKey: st
 
 export async function getSourceStatus(config: PrgConfig, checkRemote: boolean, probe?: SourceStatusProbe): Promise<SourceStatusResult> {
   const coverage = await readCoverage(join(config.dataDir, "catalog.sqlite"));
+  if (checkRemote && !probe) {
+    throw new Error("Remote source status probe is not configured.");
+  }
   const sources = checkRemote && probe ? await probe() : localSourceStates(coverage);
   return {
     checkedRemote: checkRemote && probe !== undefined,
