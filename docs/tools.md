@@ -2,6 +2,8 @@
 
 Wszystkie narzędzia zwracają `structuredContent`. Odczyty są read-only; `sync_data` jest jedynym publicznym narzędziem zapisu.
 
+Narzędzia zwracające dane PRG (`search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas`, `search_addresses`, `get_address`, `reverse_address`, `search_streets`, `get_street`) dołączają `source`, `datasetState`, `syncedAt` i `coverage`. Gdy wymagany lokalny zakres nie jest zainstalowany, zwracają błąd `DATA_NOT_INSTALLED` z komendą synchronizacji, zamiast pustego wyniku.
+
 ## Operacyjne
 
 | Narzędzie | Kiedy używać |

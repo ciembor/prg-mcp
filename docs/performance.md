@@ -57,6 +57,22 @@ Nagłówki oficjalnych plików sprawdzone 22 czerwca 2026 r.:
 
 Nie należy sumować alternatywnych formatów tego samego zbioru podczas planowania synchronizacji. Planner ma wybrać jeden kanoniczny wariant i doliczyć staging, bazę docelową oraz zapas na atomową podmianę. Przed pełnym importem wymagane jest co najmniej dwukrotne miejsce względem przewidywanej bazy plus rozmiar archiwów.
 
-## Budżety i następne pomiary
+## Budżety pełnej Polski
 
-Budżety zapytań znajdują się w backlogu. Każdy benchmark produkcyjny musi podawać commit, wersję Node, platformę, architekturę, identyfikację źródła, liczbę rekordów i peak RSS. Wyniki pełnej Polski zostaną dodane po ukończeniu kanonicznych importerów i nie będą ekstrapolowane z jednego województwa jako pomiar.
+Pełny gate wydajnościowy działa na lokalnej instalacji wszystkich 54 warstw PRG i wszystkich 16 shardów adresowych:
+
+```bash
+PRG_DATA_DIR=/absolute/path/to/prg-data pnpm benchmark:full-poland
+```
+
+Skrypt `scripts/benchmark-full-poland-queries.mjs` najpierw odrzuca niepełną instalację, zamiast ekstrapolować wyniki z jednego województwa. Następnie mierzy p95 po warm-up i egzekwuje budżety:
+
+| Operacja | Budżet p95 |
+| --- | ---: |
+| katalog/status warstw | < 50 ms |
+| exact ID/code lookup | < 50 ms |
+| wyszukiwanie tekstowe top 20 | < 200 ms |
+| `locate_point` przez R-tree | < 300 ms |
+| `reverse_address` w promieniu 1 km | < 200 ms |
+
+Każdy wynik benchmarku zapisuje katalog danych, wersję Node, platformę, architekturę, liczbę iteracji, peak RSS oraz zmierzone p95/max dla operacji.

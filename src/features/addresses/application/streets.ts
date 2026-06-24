@@ -1,4 +1,5 @@
 import type { PrgConfig } from "../../../runtime/config.js";
+import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
 import { searchStreets as searchStreetFts } from "../../search/index.js";
 import { listInstalledAddressShards, openAddressShard, readStreetById, toStreetSummary, type StreetRow, type StreetSummary, type StreetWithGeometry } from "./address-model.js";
@@ -16,8 +17,11 @@ export type SearchStreetsResult = {
 export async function searchStreets(config: PrgConfig, input: SearchStreetsInput): Promise<SearchStreetsResult> {
   const limit = Math.min(input.limit ?? 20, 100);
   const streets: StreetSummary[] = [];
+  const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
 
-  for (const voivodeshipCode of listInstalledAddressShards(config, input.voivodeshipCodes)) {
+  assertDataInstalled(installedShards.length > 0, "PRG street data is not installed for the requested scope.", addressSyncCommand(input.voivodeshipCodes));
+
+  for (const voivodeshipCode of installedShards) {
     const database = openAddressShard(config, voivodeshipCode);
 
     if (!database) {
@@ -34,6 +38,12 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
   }
 
   return { streets: streets.slice(0, limit) };
+}
+
+function addressSyncCommand(voivodeshipCodes?: readonly PrgVoivodeshipCode[]): string {
+  return voivodeshipCodes && voivodeshipCodes.length === 1
+    ? `prg-mcp sync --profile addresses --teryt ${voivodeshipCodes[0]} --mode missing`
+    : "prg-mcp sync --profile addresses --mode missing";
 }
 
 export async function getStreet(config: PrgConfig, streetId: string): Promise<StreetWithGeometry> {

@@ -1,0 +1,97 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+import Database from "better-sqlite3";
+
+import type { PrgConfig } from "../runtime/config.js";
+
+type DataResultMetadata = {
+  readonly source: {
+    readonly system: "PRG";
+    readonly layerIds: string[];
+    readonly channels: string[];
+  };
+  readonly datasetState: "installed" | "not_installed" | "unknown";
+  readonly syncedAt: string | null;
+  readonly coverage: {
+    readonly complete: boolean;
+    readonly installedScopes: string[];
+    readonly missingScopes: string[];
+  };
+};
+
+export class DataNotInstalledError extends Error {
+  readonly code = "DATA_NOT_INSTALLED";
+
+  constructor(message: string, readonly syncCommand: string) {
+    super(`${message} Run: ${syncCommand}`);
+    this.name = "DataNotInstalledError";
+  }
+}
+
+export function createDataResultMetadata(
+  config: PrgConfig,
+  input: {
+    readonly layerIds: readonly string[];
+    readonly channels: readonly string[];
+    readonly fallbackScopes?: readonly string[];
+    readonly requestedScopes?: readonly string[];
+  },
+): DataResultMetadata {
+  const coverage = readInstalledCoverage(config, input.layerIds);
+  const requestedScopes = input.requestedScopes && input.requestedScopes.length > 0 ? input.requestedScopes : undefined;
+  const installedScopes = [...(coverage.scopes.length > 0 ? coverage.scopes : (input.fallbackScopes ?? []))];
+  const missingScopes = requestedScopes ? requestedScopes.filter((scope) => !installedScopes.includes(scope)) : [];
+
+  return {
+    coverage: {
+      complete: missingScopes.length === 0 && installedScopes.length > 0,
+      installedScopes,
+      missingScopes,
+    },
+    datasetState: installedScopes.length > 0 ? "installed" : "not_installed",
+    source: {
+      channels: [...new Set(input.channels)].sort(),
+      layerIds: [...new Set(input.layerIds)].sort(),
+      system: "PRG",
+    },
+    syncedAt: coverage.syncedAt,
+  };
+}
+
+export function assertDataInstalled(installed: boolean, message: string, syncCommand: string): void {
+  if (!installed) throw new DataNotInstalledError(message, syncCommand);
+}
+
+export function databaseFileExists(config: PrgConfig, name: string): boolean {
+  return existsSync(join(config.dataDir, name));
+}
+
+function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): { readonly scopes: readonly string[]; readonly syncedAt: string | null } {
+  if (layerIds.length === 0) return { scopes: [], syncedAt: null };
+
+  const path = join(config.dataDir, "catalog.sqlite");
+  if (!existsSync(path)) return { scopes: [], syncedAt: null };
+
+  const database = new Database(path, { fileMustExist: true, readonly: true });
+  try {
+    const layerIdSet = new Set(layerIds);
+    const rows = (database.prepare(`
+      select c.layer_id as layerId, c.scope_type as scopeType, c.scope_code as scopeCode, s.downloaded_at as downloadedAt
+      from installed_coverage c join snapshots s on s.id = c.snapshot_id
+      order by c.scope_type, c.scope_code, s.downloaded_at desc
+    `).all() as Array<{
+      layerId: string;
+      scopeType: string;
+      scopeCode: string;
+      downloadedAt: string;
+    }>).filter((row) => layerIdSet.has(row.layerId));
+
+    return {
+      scopes: [...new Set(rows.map((row) => `${row.scopeType}:${row.scopeCode}`))],
+      syncedAt: rows.map((row) => row.downloadedAt).sort().at(-1) ?? null,
+    };
+  } finally {
+    database.close();
+  }
+}

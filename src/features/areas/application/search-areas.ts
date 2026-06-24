@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
+import { assertDataInstalled, databaseFileExists } from "../../../shared/data-result.js";
 import { normalizeAreaSearchText, searchAreaNames } from "../../search/index.js";
 import { getPrgLayer, listPrgLayers, prgLayerCategories, type PrgLayerCategory } from "../../source-catalog/index.js";
 import { toAreaSummary, whereValidOnClause, type AreaRow, type AreaSummary } from "./area-model.js";
@@ -20,6 +21,8 @@ export type SearchAreasResult = {
 };
 
 export async function searchAreas(config: PrgConfig, input: SearchAreasInput): Promise<SearchAreasResult> {
+  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp sync --profile administrative --mode missing");
+
   if (input.layerId && !getPrgLayer(input.layerId)) {
     return { areas: [] };
   }

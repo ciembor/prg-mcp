@@ -5,6 +5,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
+import { DataNotInstalledError } from "../../../shared/data-result.js";
 import { prgVoivodeshipCodes, type PrgVoivodeshipCode } from "../../persistence/index.js";
 import { decodeWkb, type PrgGeometry } from "../../spatial/index.js";
 
@@ -138,7 +139,10 @@ export function readAddressById(config: PrgConfig, addressId: string): AddressSu
   const database = openAddressShard(config, identifier.voivodeshipCode);
 
   if (!database) {
-    throw new AddressToolError("ADDRESS_NOT_FOUND", "Address shard is not installed.");
+    throw new DataNotInstalledError(
+      `PRG address data is not installed for voivodeship ${identifier.voivodeshipCode}.`,
+      `prg-mcp sync --profile addresses --teryt ${identifier.voivodeshipCode} --mode missing`,
+    );
   }
 
   try {
@@ -159,7 +163,10 @@ export function readStreetById(config: PrgConfig, streetId: string): StreetWithG
   const database = openAddressShard(config, identifier.voivodeshipCode);
 
   if (!database) {
-    throw new AddressToolError("STREET_NOT_FOUND", "Street shard is not installed.");
+    throw new DataNotInstalledError(
+      `PRG street data is not installed for voivodeship ${identifier.voivodeshipCode}.`,
+      `prg-mcp sync --profile addresses --teryt ${identifier.voivodeshipCode} --mode missing`,
+    );
   }
 
   try {

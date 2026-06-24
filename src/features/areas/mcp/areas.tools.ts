@@ -2,8 +2,11 @@ import { defineZodTool } from "@mcp-craftsman/zod";
 import * as z from "zod";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import { prgLayerCategories } from "../../source-catalog/index.js";
+import { databaseFileExists } from "../../../shared/data-result.js";
+import { createDataResultMetadata } from "../../../shared/data-result.js";
+import { getPrgLayer, listPrgLayers, prgLayerCategories } from "../../source-catalog/index.js";
 import type { AreaSummary } from "../application/area-model.js";
+import { decodeAreaId } from "../application/area-model.js";
 import { getArea } from "../application/get-area.js";
 import { getAreaGeometry } from "../application/get-area-geometry.js";
 import { locatePoint } from "../application/locate-point.js";
@@ -31,6 +34,21 @@ const areaSummarySchema = z.object({
   validTo: z.string().nullable(),
 });
 
+const dataResultMetadataSchema = z.object({
+  coverage: z.object({
+    complete: z.boolean(),
+    installedScopes: z.array(z.string()),
+    missingScopes: z.array(z.string()),
+  }),
+  datasetState: z.enum(["installed", "not_installed", "unknown"]),
+  source: z.object({
+    channels: z.array(z.string()),
+    layerIds: z.array(z.string()),
+    system: z.literal("PRG"),
+  }),
+  syncedAt: z.string().nullable(),
+});
+
 const geometrySchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
     z.object({ coordinates: z.tuple([z.number(), z.number()]), type: z.literal("Point") }),
@@ -49,7 +67,7 @@ export function createSearchAreasTool(config: PrgConfig) {
     handler: async (input) => {
       const result = await searchAreas(config, input);
 
-      return { structuredContent: { areas: result.areas.map(toMutableAreaSummary) } };
+      return { structuredContent: { areas: result.areas.map(toMutableAreaSummary), ...areaMetadata(config, input) } };
     },
     input: z.object({
       category: categorySchema.optional(),
@@ -61,7 +79,7 @@ export function createSearchAreasTool(config: PrgConfig) {
       validOn: dateSchema.optional(),
     }),
     name: "search_areas",
-    output: z.object({ areas: z.array(areaSummarySchema) }),
+    output: z.object({ areas: z.array(areaSummarySchema) }).extend(dataResultMetadataShape),
     policy: "read",
   });
 }
@@ -70,10 +88,13 @@ export function createGetAreaTool(config: PrgConfig) {
   return defineZodTool({
     annotations: { readOnlyHint: true },
     description: "Returns one PRG area record with mapped common attributes and raw source attributes, without full geometry.",
-    handler: async ({ areaId }) => ({ structuredContent: { area: toMutableAreaSummary(await getArea(config, areaId)) } }),
+    handler: async ({ areaId }) => {
+      const area = await getArea(config, areaId);
+      return { structuredContent: { area: toMutableAreaSummary(area), ...areaMetadata(config, { layerId: area.layerId }) } };
+    },
     input: z.object({ areaId: z.string().min(1) }),
     name: "get_area",
-    output: z.object({ area: areaSummarySchema }),
+    output: z.object({ area: areaSummarySchema }).extend(dataResultMetadataShape),
     policy: "read",
   });
 }
@@ -82,7 +103,10 @@ export function createGetAreaGeometryTool(config: PrgConfig) {
   return defineZodTool({
     annotations: { readOnlyHint: true },
     description: "Returns PRG area geometry as GeoJSON in EPSG:2180, with optional simplification and vertex limit.",
-    handler: async (input) => ({ structuredContent: await getAreaGeometry(config, input) }),
+    handler: async (input) => {
+      const result = await getAreaGeometry(config, input);
+      return { structuredContent: { ...result, ...areaMetadata(config, { layerId: decodeAreaId(input.areaId).layerId }) } };
+    },
     input: z.object({
       areaId: z.string().min(1),
       maxVertices: z.number().int().min(4).max(100_000).default(10_000),
@@ -97,7 +121,7 @@ export function createGetAreaGeometryTool(config: PrgConfig) {
       simplified: z.boolean(),
       snapshotId: z.number().int(),
       vertexCount: z.number().int(),
-    }),
+    }).extend(dataResultMetadataShape),
     policy: "read",
   });
 }
@@ -109,7 +133,7 @@ export function createLocatePointTool(config: PrgConfig) {
     handler: async (input) => {
       const result = await locatePoint(config, input);
 
-      return { structuredContent: { matches: result.matches.map(toMutableAreaSummary), point: [...result.point] as [number, number] } };
+      return { structuredContent: { matches: result.matches.map(toMutableAreaSummary), point: [...result.point] as [number, number], ...areaMetadata(config, input) } };
     },
     input: z.object({
       category: categorySchema.optional(),
@@ -121,7 +145,7 @@ export function createLocatePointTool(config: PrgConfig) {
       y: z.number().finite(),
     }),
     name: "locate_point",
-    output: z.object({ matches: z.array(areaSummarySchema), point: z.tuple([z.number(), z.number()]) }),
+    output: z.object({ matches: z.array(areaSummarySchema), point: z.tuple([z.number(), z.number()]) }).extend(dataResultMetadataShape),
     policy: "read",
   });
 }
@@ -137,7 +161,8 @@ export function createRelateAreasTool(config: PrgConfig) {
         structuredContent: {
           matches: result.matches.map(toMutableAreaSummary),
           relation: result.relation,
-          source: toMutableAreaSummary(result.source),
+          ...areaMetadata(config, input),
+          sourceArea: toMutableAreaSummary(result.source),
         },
       };
     },
@@ -153,8 +178,31 @@ export function createRelateAreasTool(config: PrgConfig) {
       message: "relate_areas requires category or layerIds.",
     }),
     name: "relate_areas",
-    output: z.object({ matches: z.array(areaSummarySchema), relation: z.literal("intersects"), source: areaSummarySchema }),
+    output: z.object({ matches: z.array(areaSummarySchema), relation: z.literal("intersects"), sourceArea: areaSummarySchema }).extend(dataResultMetadataShape),
     policy: "read",
+  });
+}
+
+const dataResultMetadataShape = dataResultMetadataSchema.shape;
+
+function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; readonly layerIds?: readonly string[]; readonly category?: string }) {
+  let layerIds: readonly string[];
+
+  if (input.layerId) {
+    layerIds = [input.layerId];
+  } else if (input.layerIds && input.layerIds.length > 0) {
+    layerIds = input.layerIds;
+  } else {
+    layerIds = listPrgLayers().filter((layer) => !input.category || layer.category === input.category).map((layer) => layer.layerId);
+  }
+
+  const channels = layerIds.map((layerId) => getPrgLayer(layerId)?.sourceChannel ?? "wfs");
+
+  return createDataResultMetadata(config, {
+    channels,
+    fallbackScopes: databaseFileExists(config, "boundaries.sqlite") ? ["country:PL"] : [],
+    layerIds,
+    requestedScopes: ["country:PL"],
   });
 }
 

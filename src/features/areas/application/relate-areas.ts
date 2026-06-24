@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
+import { assertDataInstalled, databaseFileExists } from "../../../shared/data-result.js";
 import { decodeWkb } from "../../spatial/index.js";
 import { geometriesIntersect } from "../../spatial/infrastructure/turf/geometry-predicates.js";
 import { listPrgLayers, type PrgLayerCategory } from "../../source-catalog/index.js";
@@ -23,6 +24,7 @@ export type RelateAreasResult = {
 };
 
 export async function relateAreas(config: PrgConfig, input: RelateAreasInput): Promise<RelateAreasResult> {
+  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp sync --profile administrative --mode missing");
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
 
   try {

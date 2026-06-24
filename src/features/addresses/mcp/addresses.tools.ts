@@ -2,8 +2,10 @@ import { defineZodTool } from "@mcp-craftsman/zod";
 import * as z from "zod";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import { prgVoivodeshipCodes } from "../../persistence/index.js";
+import { createDataResultMetadata, databaseFileExists } from "../../../shared/data-result.js";
+import { prgVoivodeshipCodes, type PrgVoivodeshipCode } from "../../persistence/index.js";
 import type { AddressSummary, StreetSummary } from "../application/address-model.js";
+import { decodeAddressId, decodeStreetId } from "../application/address-model.js";
 import { getAddress } from "../application/get-address.js";
 import { reverseAddress } from "../application/reverse-address.js";
 import { searchAddresses } from "../application/search-addresses.js";
@@ -43,6 +45,21 @@ const streetSummarySchema = z.object({
   voivodeshipCode: voivodeshipCodeSchema,
 });
 
+const dataResultMetadataSchema = z.object({
+  coverage: z.object({
+    complete: z.boolean(),
+    installedScopes: z.array(z.string()),
+    missingScopes: z.array(z.string()),
+  }),
+  datasetState: z.enum(["installed", "not_installed", "unknown"]),
+  source: z.object({
+    channels: z.array(z.string()),
+    layerIds: z.array(z.string()),
+    system: z.literal("PRG"),
+  }),
+  syncedAt: z.string().nullable(),
+});
+
 const geometrySchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
     z.object({ coordinates: z.tuple([z.number(), z.number()]), type: z.literal("Point") }),
@@ -61,7 +78,7 @@ export function createSearchAddressesTool(config: PrgConfig) {
     handler: async (input) => {
       const result = await searchAddresses(config, input);
 
-      return { structuredContent: { addresses: result.addresses.map(toMutableAddressSummary) } };
+      return { structuredContent: { addresses: result.addresses.map(toMutableAddressSummary), ...addressMetadata(config, "A07", input.voivodeshipCodes) } };
     },
     input: z.object({
       limit: z.number().int().min(1).max(100).default(20),
@@ -80,7 +97,7 @@ export function createSearchAddressesTool(config: PrgConfig) {
       message: "search_addresses requires exactly one of query or structured.",
     }),
     name: "search_addresses",
-    output: z.object({ addresses: z.array(addressSummarySchema) }),
+    output: z.object({ addresses: z.array(addressSummarySchema) }).extend(dataResultMetadataShape),
     policy: "read",
   });
 }
@@ -89,10 +106,15 @@ export function createGetAddressTool(config: PrgConfig) {
   return defineZodTool({
     annotations: { readOnlyHint: true },
     description: "Returns one PRG address point with IIP identifier, coordinates, postal-code attribute and source provenance.",
-    handler: async ({ addressId }) => ({ structuredContent: { address: toMutableAddressSummary(await getAddress(config, addressId)) } }),
+    handler: async ({ addressId }) => ({
+      structuredContent: {
+        address: toMutableAddressSummary(await getAddress(config, addressId)),
+        ...addressMetadata(config, "A07", [decodeAddressId(addressId).voivodeshipCode]),
+      },
+    }),
     input: z.object({ addressId: z.string().min(1) }),
     name: "get_address",
-    output: z.object({ address: addressSummarySchema }),
+    output: z.object({ address: addressSummarySchema }).extend(dataResultMetadataShape),
     policy: "read",
   });
 }
@@ -112,6 +134,7 @@ export function createReverseAddressTool(config: PrgConfig) {
           })),
           point: [...result.point] as [number, number],
           radiusMeters: result.radiusMeters,
+          ...addressMetadata(config, "A07", input.voivodeshipCodes),
         },
       };
     },
@@ -128,7 +151,7 @@ export function createReverseAddressTool(config: PrgConfig) {
       addresses: z.array(addressSummarySchema.extend({ distanceMeters: z.number() })),
       point: z.tuple([z.number(), z.number()]),
       radiusMeters: z.number(),
-    }),
+    }).extend(dataResultMetadataShape),
     policy: "read",
   });
 }
@@ -140,7 +163,7 @@ export function createSearchStreetsTool(config: PrgConfig) {
     handler: async (input) => {
       const result = await searchStreets(config, input);
 
-      return { structuredContent: { streets: result.streets.map(toMutableStreetSummary) } };
+      return { structuredContent: { streets: result.streets.map(toMutableStreetSummary), ...addressMetadata(config, "A08", input.voivodeshipCodes) } };
     },
     input: z.object({
       limit: z.number().int().min(1).max(100).default(20),
@@ -148,7 +171,7 @@ export function createSearchStreetsTool(config: PrgConfig) {
       voivodeshipCodes: z.array(voivodeshipCodeSchema).max(16).optional(),
     }),
     name: "search_streets",
-    output: z.object({ streets: z.array(streetSummarySchema) }),
+    output: z.object({ streets: z.array(streetSummarySchema) }).extend(dataResultMetadataShape),
     policy: "read",
   });
 }
@@ -160,12 +183,33 @@ export function createGetStreetTool(config: PrgConfig) {
     handler: async ({ streetId }) => {
       const street = await getStreet(config, streetId);
 
-      return { structuredContent: { street: { ...toMutableStreetSummary(street), geometry: street.geometry } } };
+      return {
+        structuredContent: {
+          street: { ...toMutableStreetSummary(street), geometry: street.geometry },
+          ...addressMetadata(config, "A08", [decodeStreetId(streetId).voivodeshipCode]),
+        },
+      };
     },
     input: z.object({ streetId: z.string().min(1) }),
     name: "get_street",
-    output: z.object({ street: streetSummarySchema.extend({ geometry: geometrySchema }) }),
+    output: z.object({ street: streetSummarySchema.extend({ geometry: geometrySchema }) }).extend(dataResultMetadataShape),
     policy: "read",
+  });
+}
+
+const dataResultMetadataShape = dataResultMetadataSchema.shape;
+
+function addressMetadata(config: PrgConfig, layerId: "A07" | "A08", voivodeshipCodes?: readonly PrgVoivodeshipCode[]) {
+  const requestedScopes = voivodeshipCodes?.map((code) => `voivodeship:${code}`);
+  const fallbackScopes = voivodeshipCodes
+    ? voivodeshipCodes.filter((code) => databaseFileExists(config, `addresses-${code}.sqlite`)).map((code) => `voivodeship:${code}`)
+    : prgVoivodeshipCodes.filter((code) => databaseFileExists(config, `addresses-${code}.sqlite`)).map((code) => `voivodeship:${code}`);
+
+  return createDataResultMetadata(config, {
+    channels: ["address-package"],
+    fallbackScopes,
+    layerIds: [layerId],
+    requestedScopes,
   });
 }
 

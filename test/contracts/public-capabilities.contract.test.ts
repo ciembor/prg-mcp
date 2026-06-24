@@ -82,6 +82,42 @@ describe("public capability contracts", () => {
     }
   });
 
+  it("adds data provenance and coverage metadata to every PRG data result", async () => {
+    const app = createContractApp();
+
+    for (const [toolName, input] of Object.entries(dataResultToolInputs(contractAreaId, contractAddressId, contractStreetId))) {
+      const result = await callTool(app, toolName, input);
+
+      expect(result.structuredContent, toolName).toMatchObject({
+        coverage: {
+          complete: true,
+          missingScopes: [],
+        },
+        datasetState: "installed",
+        source: {
+          system: "PRG",
+        },
+        syncedAt: null,
+      });
+      expect((result.structuredContent as { coverage: { installedScopes: string[] } }).coverage.installedScopes.length, toolName).toBeGreaterThan(0);
+      expect((result.structuredContent as { source: { layerIds: string[] } }).source.layerIds.length, toolName).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not report missing local data as an empty result", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "prg-mcp-missing-data-contract-"));
+    const app = createApp(loadPrgConfig({ configDir: dataDir, dataDir, logLevel: "silent", port: 0, transport: "stdio" }, {}));
+
+    await expect(callTool(app, "search_areas", { category: "administrative", query: "Wieliszew" })).rejects.toMatchObject({
+      code: "DATA_NOT_INSTALLED",
+      name: "DataNotInstalledError",
+    });
+    await expect(callTool(app, "search_addresses", { query: "Warszawa Żurawia 12A", voivodeshipCodes: ["14"] })).rejects.toMatchObject({
+      code: "DATA_NOT_INSTALLED",
+      name: "DataNotInstalledError",
+    });
+  });
+
   it("returns stable errors for invalid public tool input", async () => {
     const app = createContractApp();
 
@@ -100,6 +136,23 @@ describe("public capability contracts", () => {
     });
   });
 });
+
+function dataResultToolInputs(areaId: string, addressId: string, streetId: string): Readonly<Record<string, unknown>> {
+  const inputs = publicToolInputs(areaId, addressId, streetId);
+
+  return {
+    get_address: inputs.get_address,
+    get_area: inputs.get_area,
+    get_area_geometry: inputs.get_area_geometry,
+    get_street: inputs.get_street,
+    locate_point: inputs.locate_point,
+    relate_areas: inputs.relate_areas,
+    reverse_address: inputs.reverse_address,
+    search_addresses: inputs.search_addresses,
+    search_areas: inputs.search_areas,
+    search_streets: inputs.search_streets,
+  };
+}
 
 function expectAnnotations(tool: Capability): void {
   if (tool.policy === "read") {

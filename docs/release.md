@@ -21,6 +21,7 @@ Przed wydaniem zweryfikować:
 - `pnpm quality` przechodzi.
 - `pnpm build` przechodzi.
 - `pnpm test:pack-smoke` przechodzi.
+- `PRG_DATA_DIR=/absolute/path/to/prg-data pnpm benchmark:full-poland` przechodzi na pełnej lokalnej instalacji Polski przed wydaniem `1.0`.
 - `pnpm security:audit` nie zwraca high/critical bez jawnego wyjątku.
 - `node dist/cli.js tools`, `setup`, `status`, `coverage` i `doctor` przechodzą na pustym katalogu danych.
 - `NOTICE.md`, `LICENSE`, `README.md`, `docs/provenance.md` i `docs/layer-coverage.md` są w tarballu npm.

@@ -33,6 +33,7 @@
     "prepack": "pnpm build",
     "benchmark:stack": "node scripts/benchmark-spatial-stack.mjs",
     "benchmark:prg-2026": "node scripts/benchmark-prg-2026.mjs",
+    "benchmark:full-poland": "node scripts/benchmark-full-poland-queries.mjs",
     "generate:feature": "mcp-craftsman generate feature",
     "quality": "mcp-craftsman quality",
     "security:audit": "pnpm audit --audit-level high",
