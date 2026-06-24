@@ -43,12 +43,21 @@ async function fileStatus(dataDir: string, name: string): Promise<DatabaseFileSt
 function detectSqliteExtensions(): ServerStatus["sqlite"] {
   const database = new Database(":memory:");
   try {
-    database.exec("create virtual table fts_probe using fts5(value); create virtual table rtree_probe using rtree(id,min_x,max_x,min_y,max_y)");
-    return { fts5: true, rtree: true };
-  } catch {
-    return { fts5: false, rtree: false };
+    return {
+      fts5: probeSqliteExtension(database, "create virtual table fts_probe using fts5(value)"),
+      rtree: probeSqliteExtension(database, "create virtual table rtree_probe using rtree(id,min_x,max_x,min_y,max_y)"),
+    };
   } finally {
     database.close();
+  }
+}
+
+function probeSqliteExtension(database: Database.Database, sql: string): boolean {
+  try {
+    database.exec(sql);
+    return true;
+  } catch {
+    return false;
   }
 }
 

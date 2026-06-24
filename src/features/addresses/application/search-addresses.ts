@@ -1,7 +1,7 @@
 import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
-import { searchAddresses as searchAddressFts } from "../../search/index.js";
+import { compareAddressResults, searchAddresses as searchAddressFts, type AddressSearchResult } from "../../search/index.js";
 import { addressRecoveryAction, listInstalledAddressShards, openAddressShard, toAddressSummary, type AddressRow, type AddressSummary } from "./address-model.js";
 
 export type AddressStructuredQuery = {
@@ -28,7 +28,7 @@ export type SearchAddressesResult = {
 export async function searchAddresses(config: PrgConfig, input: SearchAddressesInput): Promise<SearchAddressesResult> {
   validateSearchInput(input);
   const limit = Math.min(input.limit ?? 20, 100);
-  const addresses: AddressSummary[] = [];
+  const addresses: Array<AddressSummary & { readonly rank?: AddressSearchResult }> = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
 
   assertDataInstalled(installedShards.length > 0, "PRG address data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
@@ -42,21 +42,23 @@ export async function searchAddresses(config: PrgConfig, input: SearchAddressesI
 
     try {
       const shardResults = input.query
-        ? searchAddressFts(database, { limit, query: input.query }).map((result) => result.objectId)
-        : searchStructuredObjectIds(database, input.structured ?? {}, limit);
+        ? searchAddressFts(database, { limit, query: input.query })
+        : searchStructuredObjectIds(database, input.structured ?? {}, limit).map((objectId) => ({ objectId }));
+      const objectIds = shardResults.map((result) => result.objectId);
 
-      if (shardResults.length === 0) {
+      if (objectIds.length === 0) {
         continue;
       }
 
-      const rows = readAddressesByObjectIds(database, shardResults);
-      addresses.push(...rows.map((row) => toAddressSummary(voivodeshipCode, row)));
+      const rankByObjectId = new Map(shardResults.filter(isAddressSearchResult).map((result) => [result.objectId, result]));
+      const rows = readAddressesByObjectIds(database, objectIds);
+      addresses.push(...rows.map((row) => ({ ...toAddressSummary(voivodeshipCode, row), rank: rankByObjectId.get(row.object_id) })));
     } finally {
       database.close();
     }
   }
 
-  return { addresses: addresses.slice(0, limit) };
+  return { addresses: sortAddressSummaries(addresses).slice(0, limit).map(toAddressWithoutRank) };
 }
 
 function validateSearchInput(input: SearchAddressesInput): void {
@@ -77,7 +79,7 @@ function searchStructuredObjectIds(database: import("better-sqlite3").Database, 
         and (@localityId is null or locality_id = @localityId)
         and (@streetId is null or street_id = @streetId)
         and (@localityName is null or lower(locality_name) = lower(@localityName))
-        and (@streetName is null or street_name is null or lower(street_name) = lower(@streetName))
+        and (@streetName is null or lower(street_name) = lower(@streetName))
         and (@buildingNumber is null or lower(building_number) = lower(@buildingNumber))
         and (@postalCode is null or postal_code = @postalCode)
       order by locality_name collate nocase asc, street_name collate nocase asc, building_number collate nocase asc, object_id asc
@@ -112,4 +114,44 @@ function readAddressesByObjectIds(database: import("better-sqlite3").Database, o
       order by case object_id ${order} end
     `)
     .all(parameters) as AddressRow[];
+}
+
+function isAddressSearchResult(result: { readonly objectId: string } | AddressSearchResult): result is AddressSearchResult {
+  return "match" in result;
+}
+
+function sortAddressSummaries(addresses: Array<AddressSummary & { readonly rank?: AddressSearchResult }>): Array<AddressSummary & { readonly rank?: AddressSearchResult }> {
+  return addresses.sort((left, right) => {
+    if (left.rank && right.rank) return compareAddressResults(left.rank, right.rank);
+    if (left.rank) return -1;
+    if (right.rank) return 1;
+    return (
+      (left.localityName ?? "").localeCompare(right.localityName ?? "", "pl")
+      || (left.streetName ?? "").localeCompare(right.streetName ?? "", "pl")
+      || left.buildingNumber.localeCompare(right.buildingNumber, "pl")
+      || left.objectId.localeCompare(right.objectId, "pl")
+    );
+  });
+}
+
+function toAddressWithoutRank(address: AddressSummary & { readonly rank?: AddressSearchResult }): AddressSummary {
+  return {
+    addressId: address.addressId,
+    buildingNumber: address.buildingNumber,
+    iipId: address.iipId,
+    localityId: address.localityId,
+    localityName: address.localityName,
+    municipalityCode: address.municipalityCode,
+    objectId: address.objectId,
+    point: address.point,
+    postalCode: address.postalCode,
+    postalCodeNote: address.postalCodeNote,
+    sourceProperties: address.sourceProperties,
+    sourceScope: address.sourceScope,
+    streetId: address.streetId,
+    streetName: address.streetName,
+    validFrom: address.validFrom,
+    versionFrom: address.versionFrom,
+    voivodeshipCode: address.voivodeshipCode,
+  };
 }

@@ -36,6 +36,7 @@ export type AddressSearchResult = {
   streetName: string | null;
   buildingNumber: string;
   postalCode: string | null;
+  bm25: number;
   match: TextMatch;
 };
 
@@ -44,6 +45,7 @@ export type StreetSearchResult = {
   objectId: string;
   name: string;
   normalizedName: string;
+  bm25: number;
   match: TextMatch;
 };
 

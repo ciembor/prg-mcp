@@ -30,6 +30,7 @@ export type AreaSearchOptions = {
 export function normalizeAreaSearchText(text: string): string {
   return text
     .normalize("NFKD")
+    .replace(/[łŁ]/gu, (character) => (character === "Ł" ? "L" : "l"))
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, " ")

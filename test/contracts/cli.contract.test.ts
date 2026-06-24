@@ -129,6 +129,34 @@ describe("prg-mcp CLI contract", () => {
     expect(result.layers).toHaveLength(54);
   });
 
+  it("parses source-status --remote=false as a local check", async () => {
+    const stdout = new MemoryWritable();
+
+    await runCli(["source-status", "--remote=false"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout,
+    });
+
+    expect(JSON.parse(stdout.content)).toMatchObject({
+      checkedRemote: false,
+      remoteStatus: "not_requested",
+    });
+  });
+
+  it("validates export numeric limits before reading snapshots", async () => {
+    await expect(runCli(["export", "--layer", "A03", "--id", "missing", "--max-vertices", "-1"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout: new MemoryWritable(),
+    })).rejects.toThrow("--max-vertices must be at least 4.");
+    await expect(runCli(["export", "--layer", "A03", "--id", "missing", "--tolerance-meters", "-1"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout: new MemoryWritable(),
+    })).rejects.toThrow("--tolerance-meters must be at least 0.");
+  });
+
   it("shows setup estimate for the recommended administrative profile", async () => {
     const stdout = new MemoryWritable();
     const stderr = new MemoryWritable();

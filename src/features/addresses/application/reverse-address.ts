@@ -23,6 +23,7 @@ const maximumRadiusMeters = 10_000;
 export async function reverseAddress(config: PrgConfig, input: ReverseAddressInput): Promise<ReverseAddressResult> {
   const radiusMeters = input.radiusMeters ?? 500;
   const maxCandidates = Math.min(input.maxCandidates ?? 500, 5_000);
+  const queryCandidateLimit = maxCandidates + 1;
 
   if (radiusMeters > maximumRadiusMeters) {
     throw new AddressToolError("RADIUS_LIMIT_EXCEEDED", `reverse_address radius limit is ${maximumRadiusMeters} meters.`);
@@ -51,14 +52,14 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
             and addresses_rtree.min_y <= @maxY
             and addresses_rtree.max_y >= @minY
           order by addresses.object_id asc
-          limit @maxCandidates
+          limit @queryCandidateLimit
         `)
         .all({
-          maxCandidates,
           maxX: input.x + radiusMeters,
           maxY: input.y + radiusMeters,
           minX: input.x - radiusMeters,
           minY: input.y - radiusMeters,
+          queryCandidateLimit,
         }) as AddressRow[];
 
       if (rows.length === 0) {
@@ -69,18 +70,18 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
             where x between @minX and @maxX
               and y between @minY and @maxY
             order by object_id asc
-            limit @maxCandidates
+            limit @queryCandidateLimit
           `)
           .all({
-            maxCandidates,
             maxX: input.x + radiusMeters,
             maxY: input.y + radiusMeters,
             minX: input.x - radiusMeters,
             minY: input.y - radiusMeters,
+            queryCandidateLimit,
           }) as AddressRow[];
       }
 
-      if (rows.length >= maxCandidates) {
+      if (rows.length > maxCandidates) {
         throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
       }
 

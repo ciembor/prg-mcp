@@ -24,7 +24,7 @@ export function createPrgCliCommands(): readonly McpCliCommand<PrgConfig>[] {
   return [
     command("status", async ({ config, io }) => writeJson(io.stdout, await getServerStatus(config))),
     command("coverage", async ({ config, io }) => writeJson(io.stdout, await runCoverageCommand(config))),
-    command("source-status", async ({ args, config, io }) => writeJson(io.stdout, await getSourceStatus(config, parseOptions(args).has("remote")))),
+    command("source-status", async ({ args, config, io }) => writeJson(io.stdout, await getSourceStatus(config, readBooleanOption(parseOptions(args), "remote")))),
     command("doctor", async ({ config, io }) => writeJson(io.stdout, await runDoctorCommand(config))),
     command("export", async ({ args, config, io }) => writeJson(io.stdout, await runExportCommand(config, parseOptions(args)))),
     command("setup", async ({ args, config, io }) => writeJson(io.stdout, await runSetupCommand(config, parseOptions(args), io))),
@@ -76,12 +76,16 @@ async function runExportCommand(config: PrgConfig, options: OptionMap) {
   const crs = option(options, "crs") ?? "EPSG:2180";
   if (format !== "geojson") throw new Error("export supports only --format geojson.");
   if (crs !== "EPSG:2180" && crs !== "EPSG:4326") throw new Error("export supports --crs EPSG:2180 or EPSG:4326.");
+  const maxVertices = readIntegerOption(options, "max-vertices");
+  if (maxVertices !== undefined && maxVertices < 4) throw new Error("--max-vertices must be at least 4.");
+  const toleranceMeters = readNumberOption(options, "tolerance-meters");
+  if (toleranceMeters !== undefined && toleranceMeters < 0) throw new Error("--tolerance-meters must be at least 0.");
 
   const snapshotId = readSnapshotId(config, layerId, option(options, "snapshot-id"));
   const result = await getAreaGeometry(config, {
     areaId: encodeAreaId({ layerId, objectId, snapshotId }),
-    maxVertices: readIntegerOption(options, "max-vertices"),
-    toleranceMeters: readNumberOption(options, "tolerance-meters"),
+    maxVertices,
+    toleranceMeters,
   });
   const geometry = crs === "EPSG:4326" ? transformGeometryTo4326(result.geometry) : result.geometry;
   return {
@@ -201,6 +205,14 @@ function readNumberOption(options: OptionMap, name: string): number | undefined 
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) throw new Error(`--${name} must be a finite number.`);
   return parsed;
+}
+
+function readBooleanOption(options: OptionMap, name: string): boolean {
+  const value = option(options, name);
+  if (value === undefined) return false;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`--${name} must be true or false.`);
 }
 
 function parseInteger(value: string, name: string): number {

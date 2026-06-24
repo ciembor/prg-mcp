@@ -38,6 +38,8 @@ export type {
   AreaSearchResult,
 } from "./domain/area-search.js";
 export {
+  compareAddressResults,
+  compareStreetResults,
   insertAddressSearchDocument,
   rebuildStreetSearchIndex,
   searchAddresses,

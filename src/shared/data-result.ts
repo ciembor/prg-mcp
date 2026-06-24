@@ -40,8 +40,9 @@ export function createDataResultMetadata(
 ): DataResultMetadata {
   const coverage = readInstalledCoverage(config, input.layerIds);
   const requestedScopes = input.requestedScopes && input.requestedScopes.length > 0 ? input.requestedScopes : undefined;
-  const installedScopes = [...(coverage.scopes.length > 0 ? coverage.scopes : (input.fallbackScopes ?? []))];
-  const missingScopes = requestedScopes ? requestedScopes.filter((scope) => !installedScopes.includes(scope)) : [];
+  const coveragePairs = coverage.pairs.length > 0 ? coverage.pairs : fallbackCoveragePairs(input.layerIds, input.fallbackScopes ?? []);
+  const installedScopes = [...new Set(coveragePairs.map((pair) => pair.scope))].sort();
+  const missingScopes = requestedScopes ? missingCoverageScopes(input.layerIds, requestedScopes, coveragePairs) : [];
 
   return {
     coverage: {
@@ -67,11 +68,11 @@ export function databaseFileExists(config: PrgConfig, name: string): boolean {
   return existsSync(join(config.dataDir, name));
 }
 
-function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): { readonly scopes: readonly string[]; readonly syncedAt: string | null } {
-  if (layerIds.length === 0) return { scopes: [], syncedAt: null };
+function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): { readonly pairs: readonly CoveragePair[]; readonly syncedAt: string | null } {
+  if (layerIds.length === 0) return { pairs: [], syncedAt: null };
 
   const path = join(config.dataDir, "catalog.sqlite");
-  if (!existsSync(path)) return { scopes: [], syncedAt: null };
+  if (!existsSync(path)) return { pairs: [], syncedAt: null };
 
   const database = new Database(path, { fileMustExist: true, readonly: true });
   try {
@@ -88,10 +89,32 @@ function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): 
     }>).filter((row) => layerIdSet.has(row.layerId));
 
     return {
-      scopes: [...new Set(rows.map((row) => `${row.scopeType}:${row.scopeCode}`))],
+      pairs: rows.map((row) => ({ layerId: row.layerId, scope: `${row.scopeType}:${row.scopeCode}` })),
       syncedAt: rows.map((row) => row.downloadedAt).sort().at(-1) ?? null,
     };
   } finally {
     database.close();
   }
+}
+
+type CoveragePair = {
+  readonly layerId: string;
+  readonly scope: string;
+};
+
+function fallbackCoveragePairs(layerIds: readonly string[], scopes: readonly string[]): readonly CoveragePair[] {
+  return layerIds.flatMap((layerId) => scopes.map((scope) => ({ layerId, scope })));
+}
+
+function missingCoverageScopes(layerIds: readonly string[], requestedScopes: readonly string[], installedPairs: readonly CoveragePair[]): string[] {
+  const installed = new Set(installedPairs.map((pair) => coveragePairKey(pair.layerId, pair.scope)));
+  return layerIds.flatMap((layerId) =>
+    requestedScopes
+      .filter((scope) => !installed.has(coveragePairKey(layerId, scope)))
+      .map((scope) => (layerIds.length === 1 ? scope : coveragePairKey(layerId, scope))),
+  );
+}
+
+function coveragePairKey(layerId: string, scope: string): string {
+  return `${layerId}:${scope}`;
 }

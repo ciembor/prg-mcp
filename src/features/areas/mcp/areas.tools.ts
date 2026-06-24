@@ -139,6 +139,7 @@ export function createLocatePointTool(config: PrgConfig) {
       category: categorySchema.optional(),
       layerIds: z.array(z.string().min(1)).max(54).optional(),
       limit: z.number().int().min(1).max(100).default(20),
+      maxCandidates: z.number().int().min(1).max(10_000).default(2_000),
       snapshotId: z.number().int().positive().optional(),
       validOn: dateSchema.optional(),
       x: z.number().finite(),

@@ -42,6 +42,10 @@ describe("P6 address tools", () => {
       addresses: [{ buildingNumber: "12/14", localityName: "Wieliszew", streetName: null }],
     });
     await expect(searchAddresses(config, {
+      structured: { buildingNumber: "12/14", localityName: "Wieliszew", streetName: "Żurawia" },
+      voivodeshipCodes: ["14"],
+    })).resolves.toMatchObject({ addresses: [] });
+    await expect(searchAddresses(config, {
       structured: { buildingNumber: "7", localityName: "Warszawa" },
       voivodeshipCodes: ["14"],
     })).resolves.toMatchObject({ addresses: [] });
@@ -69,6 +73,9 @@ describe("P6 address tools", () => {
     await expect(reverseAddress(config, { radiusMeters: 20, voivodeshipCodes: ["14"], x: 637807, y: 486708 })).resolves.toMatchObject({
       addresses: [{ buildingNumber: "12A", distanceMeters: 0 }],
     });
+    await expect(reverseAddress(config, { maxCandidates: 1, radiusMeters: 20, voivodeshipCodes: ["14"], x: 637807, y: 486708 })).resolves.toMatchObject({
+      addresses: [{ buildingNumber: "12A", distanceMeters: 0 }],
+    });
     const database = new Database(join(config.dataDir, "addresses-14.sqlite"));
     try {
       database.prepare("delete from addresses_rtree").run();
@@ -94,6 +101,48 @@ describe("P6 address tools", () => {
       streetId: lonelyStreetId,
     });
     expect(decodeStreetId(lonelyStreetId)).toEqual({ objectId: "ul-rondo-testowe", voivodeshipCode: "14" });
+  });
+
+  it("ranks address and street text matches globally across selected voivodeships", async () => {
+    const { config } = await createAddressFixture();
+    const lodz = new Database(join(config.dataDir, "addresses-10.sqlite"));
+    const mazowieckie = new Database(join(config.dataDir, "addresses-14.sqlite"));
+    try {
+      insertAddress(lodz, {
+        buildingNumber: "Test",
+        localityName: "Ranking",
+        municipalityCode: "1061011",
+        objectId: "pa-ranking-exact",
+        rowid: 20,
+        streetName: null,
+        x: 1,
+        y: 1,
+      });
+      insertAddress(mazowieckie, {
+        buildingNumber: "1",
+        localityName: "Ranking Test",
+        municipalityCode: "1465011",
+        objectId: "pa-ranking-prefix",
+        rowid: 20,
+        streetName: null,
+        x: 2,
+        y: 2,
+      });
+      insertStreet(lodz, { name: "Ranking Test", normalizedName: "ranking test", objectId: "ul-ranking-exact", rowid: 20 });
+      insertStreet(mazowieckie, { name: "Ranking Testowa", normalizedName: "ranking testowa", objectId: "ul-ranking-prefix", rowid: 20 });
+      rebuildStreetSearchIndex(lodz);
+      rebuildStreetSearchIndex(mazowieckie);
+    } finally {
+      lodz.close();
+      mazowieckie.close();
+    }
+
+    await expect(searchAddresses(config, { limit: 1, query: "Ranking Test", voivodeshipCodes: ["14", "10"] })).resolves.toMatchObject({
+      addresses: [{ objectId: "pa-ranking-exact", voivodeshipCode: "10" }],
+    });
+    await expect(searchStreets(config, { limit: 1, query: "Ranking Test", voivodeshipCodes: ["14", "10"] })).resolves.toMatchObject({
+      streets: [{ objectId: "ul-ranking-exact", voivodeshipCode: "10" }],
+    });
   });
 
   it("covers golden address queries for diacritics, duplicate localities, street kinds and missing street names", async () => {
@@ -262,7 +311,7 @@ function insertAddress(database: Database.Database, fixture: AddressFixture): vo
   });
 }
 
-function insertStreet(database: Database.Database, fixture: { readonly rowid: number; readonly objectId: string; readonly name: string }): void {
+function insertStreet(database: Database.Database, fixture: { readonly rowid: number; readonly objectId: string; readonly name: string; readonly normalizedName?: string }): void {
   const geometry: LineStringGeometry = {
     coordinates: [
       [637000, 486000],
@@ -277,7 +326,7 @@ function insertStreet(database: Database.Database, fixture: { readonly rowid: nu
       insert into streets (
         rowid, object_id, name, normalized_name, min_x, min_y, max_x, max_y, geometry_wkb
       ) values (
-        @rowid, @objectId, @name, 'rondo testowe', @minX, @minY, @maxX, @maxY, @geometryWkb
+        @rowid, @objectId, @name, @normalizedName, @minX, @minY, @maxX, @maxY, @geometryWkb
       )
     `)
     .run({
@@ -287,6 +336,7 @@ function insertStreet(database: Database.Database, fixture: { readonly rowid: nu
       minX: bbox.minX,
       minY: bbox.minY,
       name: fixture.name,
+      normalizedName: fixture.normalizedName ?? "rondo testowe",
       objectId: fixture.objectId,
       rowid: fixture.rowid,
     });

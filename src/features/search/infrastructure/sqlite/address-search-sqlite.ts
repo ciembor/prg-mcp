@@ -140,7 +140,7 @@ const streetSearchSql = `
   limit @limit
 `;
 
-function toAddressSearchResult(row: AddressSqlRow, query: string): AddressSearchResult & { bm25: number } {
+function toAddressSearchResult(row: AddressSqlRow, query: string): AddressSearchResult {
   return {
     bm25: row.bm25_score,
     buildingNumber: row.building_number,
@@ -153,7 +153,7 @@ function toAddressSearchResult(row: AddressSqlRow, query: string): AddressSearch
   };
 }
 
-function toStreetSearchResult(row: StreetSqlRow, query: string): StreetSearchResult & { bm25: number } {
+function toStreetSearchResult(row: StreetSqlRow, query: string): StreetSearchResult {
   return {
     bm25: row.bm25_score,
     match: classifyTextMatch(query, row.normalized_name),
@@ -195,10 +195,10 @@ function formatStreetName(streetName: string | null): string | undefined {
   return `ulica ${streetName}`;
 }
 
-function compareAddressResults(left: AddressSearchResult & { bm25: number }, right: AddressSearchResult & { bm25: number }): number {
+export function compareAddressResults(left: AddressSearchResult, right: AddressSearchResult): number {
   return compareTextMatches(left.match, right.match) || left.bm25 - right.bm25 || left.objectId.localeCompare(right.objectId, "pl") || left.rowid - right.rowid;
 }
 
-function compareStreetResults(left: StreetSearchResult & { bm25: number }, right: StreetSearchResult & { bm25: number }): number {
+export function compareStreetResults(left: StreetSearchResult, right: StreetSearchResult): number {
   return compareTextMatches(left.match, right.match) || left.bm25 - right.bm25 || left.objectId.localeCompare(right.objectId, "pl") || left.rowid - right.rowid;
 }

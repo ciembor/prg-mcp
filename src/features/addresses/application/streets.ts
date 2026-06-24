@@ -1,7 +1,7 @@
 import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
-import { searchStreets as searchStreetFts } from "../../search/index.js";
+import { compareStreetResults, searchStreets as searchStreetFts, type StreetSearchResult } from "../../search/index.js";
 import { addressRecoveryAction, listInstalledAddressShards, openAddressShard, readStreetById, toStreetSummary, type StreetRow, type StreetSummary, type StreetWithGeometry } from "./address-model.js";
 
 export type SearchStreetsInput = {
@@ -16,7 +16,7 @@ export type SearchStreetsResult = {
 
 export async function searchStreets(config: PrgConfig, input: SearchStreetsInput): Promise<SearchStreetsResult> {
   const limit = Math.min(input.limit ?? 20, 100);
-  const streets: StreetSummary[] = [];
+  const streets: Array<StreetSummary & { readonly rank: StreetSearchResult }> = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
 
   assertDataInstalled(installedShards.length > 0, "PRG street data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
@@ -29,15 +29,22 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
     }
 
     try {
-      const objectIds = searchStreetFts(database, { limit, query: input.query }).map((result) => result.objectId);
+      const shardResults = searchStreetFts(database, { limit, query: input.query });
+      const objectIds = shardResults.map((result) => result.objectId);
+      const rankByObjectId = new Map(shardResults.map((result) => [result.objectId, result]));
       const rows = readStreetsByObjectIds(database, objectIds);
-      streets.push(...rows.map((row) => toStreetSummary(voivodeshipCode, row)));
+      streets.push(...rows.map((row) => ({ ...toStreetSummary(voivodeshipCode, row), rank: rankByObjectId.get(row.object_id) as StreetSearchResult })));
     } finally {
       database.close();
     }
   }
 
-  return { streets: streets.slice(0, limit) };
+  return {
+    streets: streets
+      .sort((left, right) => compareStreetResults(left.rank, right.rank))
+      .slice(0, limit)
+      .map(toStreetWithoutRank),
+  };
 }
 
 export async function getStreet(config: PrgConfig, streetId: string): Promise<StreetWithGeometry> {
@@ -61,4 +68,18 @@ function readStreetsByObjectIds(database: import("better-sqlite3").Database, obj
       order by case object_id ${order} end
     `)
     .all(parameters) as StreetRow[];
+}
+
+function toStreetWithoutRank(street: StreetSummary & { readonly rank: StreetSearchResult }): StreetSummary {
+  return {
+    bbox: street.bbox,
+    iipId: street.iipId,
+    localityId: street.localityId,
+    municipalityCode: street.municipalityCode,
+    name: street.name,
+    objectId: street.objectId,
+    sourceProperties: street.sourceProperties,
+    streetId: street.streetId,
+    voivodeshipCode: street.voivodeshipCode,
+  };
 }

@@ -79,6 +79,9 @@ describe("P5 area tools", () => {
       ["A02", "pow-legionowski"],
       ["A03", "gmina-wieliszew"],
     ]);
+    await expect(locatePoint(config, { category: "administrative", maxCandidates: 2, snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
+      code: "COST_LIMIT_EXCEEDED",
+    });
   });
 
   it("relates bounded surfaces and lines and rejects unbounded scans at the MCP-schema level", async () => {

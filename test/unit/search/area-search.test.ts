@@ -144,8 +144,8 @@ describe("area FTS search", () => {
   });
 
   it("normalizes and escapes FTS input", () => {
-    expect(normalizeAreaSearchText("  Łódź-Górna  ")).toBe("łodz gorna");
-    expect(toAreaFtsQuery("Łódź \"Górna\"")).toBe("\"łodz\"* \"gorna\"*");
+    expect(normalizeAreaSearchText("  Łódź-Górna  ")).toBe("lodz gorna");
+    expect(toAreaFtsQuery("Łódź \"Górna\"")).toBe("\"lodz\"* \"gorna\"*");
     expect(searchAreaNames(new Database(":memory:"), { query: "   " })).toEqual([]);
     expectTypeOf<AreaSearchOptions>().toMatchTypeOf<{
       query: string;
