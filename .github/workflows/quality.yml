@@ -26,7 +26,7 @@ jobs:
           - os: ubuntu-latest
             node: 24
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           version: 10.12.1
@@ -44,7 +44,7 @@ jobs:
     name: Oldest supported MCP Craftsman
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           version: 10.12.1
@@ -68,11 +68,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out PRG MCP
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: prg-mcp
       - name: Check out MCP Craftsman
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: mcp-craftsman
           repository: ciembor/mcp-craftsman
