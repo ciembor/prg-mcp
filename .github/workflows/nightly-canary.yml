@@ -1,0 +1,32 @@
+name: nightly-canary
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-canary:
+    name: Official source canary
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - name: Static capabilities and package catalog canary
+        run: >-
+          pnpm exec vitest run
+          test/unit/source-catalog/wfs-capabilities-canary.test.ts
+          test/unit/source-catalog/wfs-schema-shapes-fixture.test.ts
+          test/unit/source-catalog/wms-package-catalog.test.ts
+          test/unit/source-catalog/emuia-migration-fixtures.test.ts

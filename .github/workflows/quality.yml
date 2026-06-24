@@ -38,6 +38,7 @@ jobs:
       - run: pnpm quality
       - run: pnpm build
       - run: node dist/cli.js tools
+      - run: pnpm test:pack-smoke
 
   minimum-framework:
     name: Oldest supported MCP Craftsman

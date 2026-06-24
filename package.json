@@ -34,6 +34,8 @@
     "benchmark:prg-2026": "node scripts/benchmark-prg-2026.mjs",
     "generate:feature": "mcp-craftsman generate feature",
     "quality": "mcp-craftsman quality",
+    "security:audit": "pnpm audit --audit-level high",
+    "test:pack-smoke": "node scripts/pack-smoke.mjs",
     "test": "vitest run"
   },
   "dependencies": {
