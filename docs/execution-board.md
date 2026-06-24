@@ -4,7 +4,12 @@ Tablica jest aktualizowana w tym samym commicie, który zamyka bieżący feature
 
 | Feature | Status | Zakres zamknięcia |
 | --- | --- | --- |
-| PRG-901 | in_progress | provenance, source limitations, state dates and validity/version attribute interpretation |
+| PRG-906 | closed | staged 0.x and 1.0 release criteria documented |
+| PRG-905 | closed | release checklist, npm provenance, rollback and clean-install verification |
+| PRG-904 | closed | Node/platform verification matrix for macOS, Linux and Windows |
+| PRG-903 | closed | code license, PRG data conditions and attribution notices |
+| PRG-902 | closed | 54/54 layer coverage matrix with fixture, tool and source |
+| PRG-901 | closed | provenance, source limitations, state dates and validity/version attribute interpretation |
 | PRG-809 | closed | SBOM/audit entry point, host allowlist and no arbitrary URL MCP input contract |
 | PRG-808 | closed | npm pack clean-install smoke for setup, tools and CLI startup |
 | PRG-807 | closed | architecture boundaries, cycle, private import and public API tests |
