@@ -23,8 +23,8 @@ type DataResultMetadata = {
 export class DataNotInstalledError extends Error {
   readonly code = "DATA_NOT_INSTALLED";
 
-  constructor(message: string, readonly syncCommand: string) {
-    super(`${message} Run: ${syncCommand}`);
+  constructor(message: string, readonly recoveryAction: string) {
+    super(`${message} ${recoveryAction}`);
     this.name = "DataNotInstalledError";
   }
 }
@@ -59,8 +59,8 @@ export function createDataResultMetadata(
   };
 }
 
-export function assertDataInstalled(installed: boolean, message: string, syncCommand: string): void {
-  if (!installed) throw new DataNotInstalledError(message, syncCommand);
+export function assertDataInstalled(installed: boolean, message: string, recoveryAction: string): void {
+  if (!installed) throw new DataNotInstalledError(message, recoveryAction);
 }
 
 export function databaseFileExists(config: PrgConfig, name: string): boolean {

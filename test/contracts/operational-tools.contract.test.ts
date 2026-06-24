@@ -57,16 +57,24 @@ describe("operational MCP tools", () => {
     });
     const result = (await callTool(app, "source_status", { checkRemote: true })).structuredContent as {
       checkedRemote: boolean;
+      remoteStatus: string;
       sources: Array<{ status: string }>;
     };
     expect(result.checkedRemote).toBe(true);
+    expect(result.remoteStatus).toBe("checked");
     expect(result.sources.map(({ status }) => status)).toEqual(states);
   });
 
-  it("fails remote source status checks when no remote probe is configured", async () => {
+  it("reports local source status when a remote probe is not configured", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "prg-source-probe-missing-"));
 
-    await expect(callTool(createApp(testConfig(dataDir)), "source_status", { checkRemote: true })).rejects.toThrow("Remote source status probe is not configured.");
+    await expect(callTool(createApp(testConfig(dataDir)), "source_status", { checkRemote: true })).resolves.toMatchObject({
+      structuredContent: {
+        checkedRemote: false,
+        remoteReason: "Remote source status probe is not configured in this build.",
+        remoteStatus: "not_configured",
+      },
+    });
   });
 });
 

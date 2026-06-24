@@ -36,12 +36,17 @@ export function searchAreaNames(database: Database.Database, options: AreaSearch
   const rows = database
     .prepare(searchAreaSql)
     .all({
+      code: options.code ?? null,
       codeQuery: options.query.trim().toLowerCase(),
       ftsQuery,
+      layerId: options.layerId ?? null,
+      layerIdsCsv: options.layerIds && options.layerIds.length > 0 ? options.layerIds.join(",") : null,
       limit: options.limit ?? 20,
+      normalizedCode: options.code ? normalizeAreaSearchText(options.code) : null,
       normalizedPrefix: `${escapeLike(normalizedQuery)}%`,
       normalizedQuery,
       snapshotId: options.snapshotId ?? null,
+      validOn: options.validOn ?? null,
     }) as AreaSearchSqlRow[];
 
   return rows.map(toAreaSearchResult);
@@ -68,6 +73,13 @@ const searchAreaSql = `
   join areas on areas.rowid = areas_fts.rowid
   where areas_fts match @ftsQuery
     and (@snapshotId is null or areas.snapshot_id = @snapshotId)
+    and (@layerId is null or areas.layer_id = @layerId)
+    and (@layerIdsCsv is null or instr(',' || @layerIdsCsv || ',', ',' || areas.layer_id || ',') > 0)
+    and (@code is null or lower(coalesce(areas.code, '')) = lower(@code) or areas.normalized_name = @normalizedCode)
+    and (@validOn is null or (
+      (areas.valid_from is null or areas.valid_from <= @validOn)
+      and (areas.valid_to is null or areas.valid_to >= @validOn)
+    ))
   order by
     rank_bucket asc,
     bm25_score asc,

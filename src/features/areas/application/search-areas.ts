@@ -21,7 +21,11 @@ export type SearchAreasResult = {
 };
 
 export async function searchAreas(config: PrgConfig, input: SearchAreasInput): Promise<SearchAreasResult> {
-  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp setup --profile administrative");
+  assertDataInstalled(
+    databaseFileExists(config, "boundaries.sqlite"),
+    "PRG boundary data is not installed.",
+    "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
+  );
 
   if (input.layerId && !getPrgLayer(input.layerId)) {
     return { areas: [] };
@@ -48,10 +52,15 @@ export async function searchAreas(config: PrgConfig, input: SearchAreasInput): P
 
 function searchByText(database: Database.Database, input: SearchAreasInput): AreaRow[] {
   const limit = Math.min(input.limit ?? 20, 100);
+  const layerIds = input.category ? layerIdsForCategory(input.category) : undefined;
   const matches = searchAreaNames(database, {
-    limit: Math.min(Math.max(limit * 20, 100), 1_000),
+    code: input.code,
+    layerId: input.layerId,
+    layerIds,
+    limit,
     query: input.query ?? "",
     snapshotId: input.snapshotId,
+    validOn: input.validOn,
   });
 
   if (matches.length === 0) {
@@ -66,19 +75,11 @@ function searchByText(database: Database.Database, input: SearchAreasInput): Are
       select *
       from areas
       where rowid in (${placeholders})
-        ${filtersSql(input)}
       order by case rowid ${rowids.map((rowid, index) => `when ${rowid} then ${index}`).join(" ")} end
     `)
-    .all({
-      ...parameters,
-      code: input.code ?? null,
-      layerId: input.layerId ?? null,
-      normalizedCode: input.code ? normalizeAreaSearchText(input.code) : null,
-      snapshotId: input.snapshotId ?? null,
-      validOn: input.validOn ?? null,
-    }) as AreaRow[];
+    .all(parameters) as AreaRow[];
 
-  return rows.slice(0, limit);
+  return rows;
 }
 
 function searchByFilters(database: Database.Database, input: SearchAreasInput): AreaRow[] {
@@ -124,13 +125,17 @@ function categorySql(category: PrgLayerCategory | undefined): string {
     return "";
   }
 
-  const layerIds = listPrgLayers()
-    .filter((layer) => layer.category === category)
-    .map((layer) => `'${layer.layerId.replaceAll("'", "''")}'`);
+  const layerIds = layerIdsForCategory(category).map((layerId) => `'${layerId.replaceAll("'", "''")}'`);
 
   if (layerIds.length === 0) {
     return "and 1 = 0";
   }
 
   return `and layer_id in (${layerIds.join(", ")})`;
+}
+
+function layerIdsForCategory(category: PrgLayerCategory): string[] {
+  return listPrgLayers()
+    .filter((layer) => layer.category === category)
+    .map((layer) => layer.layerId);
 }

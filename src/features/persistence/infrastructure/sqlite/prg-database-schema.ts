@@ -91,6 +91,7 @@ function migrateCatalogDatabase(database: Database.Database, appVersion: string)
         dataset_key text not null,
         scope text not null,
         state_date text,
+        state_date_key text not null default '',
         downloaded_at text not null,
         checked_at text not null,
         etag text,
@@ -110,7 +111,7 @@ function migrateCatalogDatabase(database: Database.Database, appVersion: string)
         scope_code text not null,
         snapshot_id integer not null references snapshots(id),
         completeness text not null,
-        primary key (layer_id, scope_type, scope_code, snapshot_id)
+        primary key (layer_id, scope_type, scope_code)
       );
 
       create index if not exists installed_coverage_layer_idx on installed_coverage(layer_id, scope_type, scope_code);
@@ -119,6 +120,11 @@ function migrateCatalogDatabase(database: Database.Database, appVersion: string)
     addColumnIfMissing(database, "snapshots", "checked_at", "text not null default '1970-01-01T00:00:00.000Z'");
     addColumnIfMissing(database, "snapshots", "adapter_version", "text not null default 'unknown'");
     addColumnIfMissing(database, "snapshots", "archive_year", "integer");
+    addColumnIfMissing(database, "snapshots", "state_date_key", "text not null default ''");
+    database.prepare("update snapshots set state_date_key = coalesce(state_date, '') where state_date_key != coalesce(state_date, '')").run();
+    migrateInstalledCoveragePrimaryKey(database);
+    deduplicateSnapshots(database);
+    database.exec("create unique index if not exists snapshots_dataset_state_date_key_idx on snapshots(dataset_key, scope, state_date_key)");
     updateSchemaMetadata(database);
     database.pragma(`user_version = ${prgDatabaseSchemaVersion}`);
   })();
@@ -311,6 +317,77 @@ function addColumnIfMissing(database: Database.Database, table: string, column: 
   if (!columns.some((candidate) => candidate.name === column)) {
     database.exec(`alter table ${table} add column ${column} ${definition}`);
   }
+}
+
+function migrateInstalledCoveragePrimaryKey(database: Database.Database): void {
+  const columns = database.pragma("table_info(installed_coverage)") as Array<{ name: string; pk: number }>;
+  const primaryKeyColumns = columns
+    .filter((column) => column.pk > 0)
+    .sort((left, right) => left.pk - right.pk)
+    .map((column) => column.name);
+
+  if (primaryKeyColumns.join(",") === "layer_id,scope_type,scope_code") {
+    return;
+  }
+
+  database.exec(`
+    create table installed_coverage_next (
+      layer_id text not null,
+      scope_type text not null,
+      scope_code text not null,
+      snapshot_id integer not null references snapshots(id),
+      completeness text not null,
+      primary key (layer_id, scope_type, scope_code)
+    );
+
+    insert into installed_coverage_next(layer_id, scope_type, scope_code, snapshot_id, completeness)
+    select c.layer_id, c.scope_type, c.scope_code, c.snapshot_id, c.completeness
+    from installed_coverage c
+    join (
+      select layer_id, scope_type, scope_code, max(snapshot_id) as snapshot_id
+      from installed_coverage
+      group by layer_id, scope_type, scope_code
+    ) latest
+      on latest.layer_id = c.layer_id
+     and latest.scope_type = c.scope_type
+     and latest.scope_code = c.scope_code
+     and latest.snapshot_id = c.snapshot_id;
+
+    drop table installed_coverage;
+    alter table installed_coverage_next rename to installed_coverage;
+    create index if not exists installed_coverage_layer_idx on installed_coverage(layer_id, scope_type, scope_code);
+  `);
+}
+
+function deduplicateSnapshots(database: Database.Database): void {
+  database.exec(`
+    update installed_coverage
+    set snapshot_id = (
+      select max(latest.id)
+      from snapshots latest
+      join snapshots current
+        on current.id = installed_coverage.snapshot_id
+       and latest.dataset_key = current.dataset_key
+       and latest.scope = current.scope
+       and latest.state_date_key = current.state_date_key
+    )
+    where snapshot_id in (
+      select id
+      from snapshots
+      where id not in (
+        select max(id)
+        from snapshots
+        group by dataset_key, scope, state_date_key
+      )
+    );
+
+    delete from snapshots
+    where id not in (
+      select max(id)
+      from snapshots
+      group by dataset_key, scope, state_date_key
+    );
+  `);
 }
 
 function updateSchemaMetadata(database: Database.Database): void {

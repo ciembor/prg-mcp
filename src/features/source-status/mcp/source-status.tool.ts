@@ -21,6 +21,8 @@ export function createSourceStatusTool(config: PrgConfig, probe?: SourceStatusPr
         scopeCode: z.string(), scopeType: z.string(), stateDate: z.string().optional(),
       })),
       installedLayerCount: z.number().int(),
+      remoteReason: z.string().optional(),
+      remoteStatus: z.enum(["checked", "not_requested", "not_configured"]),
       sources: z.array(z.object({ datasetKey: z.string(), status: z.enum(operationalSourceStates) })),
       totalLayerCount: z.number().int(),
     }),

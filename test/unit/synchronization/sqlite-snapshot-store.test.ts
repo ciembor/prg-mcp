@@ -41,9 +41,42 @@ describe("SQLite snapshot metadata", () => {
 
     const database = new Database(catalogPath, { readonly: true });
     try {
+      expect(database.prepare("select count(*) as count from snapshots").get()).toEqual({ count: 1 });
       expect(database.prepare("select layer_id, scope_type, scope_code from installed_coverage").all()).toEqual([
         { layer_id: "A00", scope_code: "PL", scope_type: "country" },
       ]);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("deduplicates open-ended snapshots and points coverage at the latest metadata", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-sync-metadata-null-"));
+    const { catalogPath } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });
+    const store = createSqliteSnapshotStore(catalogPath);
+    const metadata: SnapshotMetadata = {
+      adapterVersion: "wfs-2", checkedAt: "2026-06-23T00:00:00.000Z", datasetKey: "current:A01",
+      downloadedAt: "2026-06-23T00:00:00.000Z", recordCount: 1, schemaFingerprint: "schema",
+      scope: "country:PL", sha256: "abc", sourceUrl: "https://example.test/wfs",
+    };
+    const layer = getPrgLayer("A01");
+    if (!layer) throw new Error("Missing test layer.");
+    const target = { datasetKey: metadata.datasetKey, estimatedDiskBytes: 1, estimatedDownloadBytes: 1, layer, scope: { code: "PL", type: "country" as const } };
+
+    await store.save(metadata, target);
+    await store.save({ ...metadata, checkedAt: "2026-06-24T00:00:00.000Z", recordCount: 2, sha256: "def" }, target);
+
+    expect(await store.find(metadata.datasetKey, metadata.scope)).toEqual({
+      ...metadata,
+      checkedAt: "2026-06-24T00:00:00.000Z",
+      recordCount: 2,
+      sha256: "def",
+    });
+
+    const database = new Database(catalogPath, { readonly: true });
+    try {
+      expect(database.prepare("select count(*) as count from snapshots").get()).toEqual({ count: 1 });
+      expect(database.prepare("select count(*) as count from installed_coverage").get()).toEqual({ count: 1 });
     } finally {
       database.close();
     }

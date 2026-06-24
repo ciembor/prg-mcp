@@ -109,6 +109,40 @@ describe("area FTS search", () => {
     database.close();
   });
 
+  it("applies layer, code, and validity filters before limiting FTS matches", async () => {
+    const database = await createBoundariesDatabase();
+    for (let index = 0; index < 25; index += 1) {
+      insertArea(database, {
+        code: `WRONG-${index}`,
+        layerId: "A03",
+        name: "Wieliszew",
+        objectId: `wrong-${index}`,
+        rowid: 100 + index,
+      });
+    }
+    insertArea(database, {
+      code: "1408032",
+      layerId: "A01",
+      name: "Wieliszew",
+      objectId: "wanted",
+      rowid: 200,
+      validFrom: "2026-01-01",
+      validTo: "2026-12-31",
+    });
+    rebuildAreaSearchIndex(database);
+
+    const results = searchAreaNames(database, {
+      code: "1408032",
+      layerId: "A01",
+      limit: 1,
+      query: "Wieliszew",
+      validOn: "2026-06-25",
+    });
+
+    expect(results.map((result) => result.objectId)).toEqual(["wanted"]);
+    database.close();
+  });
+
   it("normalizes and escapes FTS input", () => {
     expect(normalizeAreaSearchText("  Łódź-Górna  ")).toBe("łodz gorna");
     expect(toAreaFtsQuery("Łódź \"Górna\"")).toBe("\"łodz\"* \"gorna\"*");
@@ -142,6 +176,8 @@ type AreaFixture = {
   normalizedName?: string;
   code?: string;
   aliases?: string;
+  validFrom?: string;
+  validTo?: string;
 };
 
 let nextRowid = 1;
@@ -158,6 +194,8 @@ function insertArea(database: Database.Database, fixture: AreaFixture): void {
         normalized_name,
         aliases,
         code,
+        valid_from,
+        valid_to,
         min_x,
         min_y,
         max_x,
@@ -173,6 +211,8 @@ function insertArea(database: Database.Database, fixture: AreaFixture): void {
         @normalizedName,
         @aliases,
         @code,
+        @validFrom,
+        @validTo,
         0,
         0,
         1,
@@ -190,5 +230,7 @@ function insertArea(database: Database.Database, fixture: AreaFixture): void {
       objectId: fixture.objectId,
       rowid: fixture.rowid ?? nextRowid++,
       snapshotId: fixture.snapshotId ?? 1,
+      validFrom: fixture.validFrom ?? null,
+      validTo: fixture.validTo ?? null,
     });
 }

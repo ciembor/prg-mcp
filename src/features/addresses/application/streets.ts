@@ -2,7 +2,7 @@ import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
 import { searchStreets as searchStreetFts } from "../../search/index.js";
-import { listInstalledAddressShards, openAddressShard, readStreetById, toStreetSummary, type StreetRow, type StreetSummary, type StreetWithGeometry } from "./address-model.js";
+import { addressRecoveryAction, listInstalledAddressShards, openAddressShard, readStreetById, toStreetSummary, type StreetRow, type StreetSummary, type StreetWithGeometry } from "./address-model.js";
 
 export type SearchStreetsInput = {
   readonly query: string;
@@ -19,7 +19,7 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
   const streets: StreetSummary[] = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
 
-  assertDataInstalled(installedShards.length > 0, "PRG street data is not installed for the requested scope.", addressSyncCommand(input.voivodeshipCodes));
+  assertDataInstalled(installedShards.length > 0, "PRG street data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
 
   for (const voivodeshipCode of installedShards) {
     const database = openAddressShard(config, voivodeshipCode);
@@ -38,12 +38,6 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
   }
 
   return { streets: streets.slice(0, limit) };
-}
-
-function addressSyncCommand(voivodeshipCodes?: readonly PrgVoivodeshipCode[]): string {
-  return voivodeshipCodes && voivodeshipCodes.length === 1
-    ? `prg-mcp setup --profile addresses --teryt ${voivodeshipCodes[0]}`
-    : "prg-mcp setup --profile addresses";
 }
 
 export async function getStreet(config: PrgConfig, streetId: string): Promise<StreetWithGeometry> {

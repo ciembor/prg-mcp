@@ -240,11 +240,11 @@ zamiast zalewac kontekst modelu pelna geometria.
 ### Brak lokalnych danych
 
 Gdy wymagany zakres nie jest zainstalowany, narzedzia danych nie zwracaja
-pustej listy. Zwracaja blad `DATA_NOT_INSTALLED` z dokladna komenda
-synchronizacji, np.:
+pustej listy. Zwracaja blad `DATA_NOT_INSTALLED` z informacja, ze ten build
+nie zawiera spakowanego runnera synchronizacji, np.:
 
 ```text
-PRG address data is not installed for the requested scope. Run: prg-mcp setup --profile addresses --teryt 14
+PRG address data is not installed for the requested scope. Data synchronization is not packaged in this build; prepare PRG address data for voivodeship 14 with a configured import pipeline.
 ```
 
 ## Co Jest W PRG, A Czego Nie Ma

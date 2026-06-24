@@ -24,7 +24,11 @@ export type RelateAreasResult = {
 };
 
 export async function relateAreas(config: PrgConfig, input: RelateAreasInput): Promise<RelateAreasResult> {
-  assertDataInstalled(databaseFileExists(config, "boundaries.sqlite"), "PRG boundary data is not installed.", "prg-mcp setup --profile administrative");
+  assertDataInstalled(
+    databaseFileExists(config, "boundaries.sqlite"),
+    "PRG boundary data is not installed.",
+    "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
+  );
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
 
   try {

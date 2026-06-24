@@ -18,6 +18,8 @@ export type CoverageStatus = {
 };
 export type SourceStatusResult = {
   readonly checkedRemote: boolean;
+  readonly remoteStatus: "checked" | "not_requested" | "not_configured";
+  readonly remoteReason?: string;
   readonly sources: readonly { readonly datasetKey: string; readonly status: OperationalSourceState }[];
   readonly coverage: readonly CoverageStatus[];
   readonly installedLayerCount: number;
@@ -27,17 +29,22 @@ export type SourceStatusProbe = () => Promise<readonly { readonly datasetKey: st
 
 export async function getSourceStatus(config: PrgConfig, checkRemote: boolean, probe?: SourceStatusProbe): Promise<SourceStatusResult> {
   const coverage = await readCoverage(join(config.dataDir, "catalog.sqlite"));
-  if (checkRemote && !probe) {
-    throw new Error("Remote source status probe is not configured.");
-  }
   const sources = checkRemote && probe ? await probe() : localSourceStates(coverage);
+  const checkedRemote = checkRemote && probe !== undefined;
   return {
-    checkedRemote: checkRemote && probe !== undefined,
+    checkedRemote,
     coverage,
     installedLayerCount: new Set(coverage.map((item) => item.layerId)).size,
+    remoteReason: checkRemote && !probe ? "Remote source status probe is not configured in this build." : undefined,
+    remoteStatus: remoteStatus(checkRemote, checkedRemote),
     sources,
     totalLayerCount: listPrgLayers().length,
   };
+}
+
+function remoteStatus(checkRemote: boolean, checkedRemote: boolean): SourceStatusResult["remoteStatus"] {
+  if (checkedRemote) return "checked";
+  return checkRemote ? "not_configured" : "not_requested";
 }
 
 async function readCoverage(catalogPath: string): Promise<readonly CoverageStatus[]> {

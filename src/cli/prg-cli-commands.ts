@@ -55,7 +55,9 @@ async function runDoctorCommand(config: PrgConfig) {
   const issues = [
     ...(!status.sqlite.fts5 ? ["SQLite FTS5 extension is unavailable."] : []),
     ...(!status.sqlite.rtree ? ["SQLite R-tree extension is unavailable."] : []),
-    ...(sourceStatus.installedLayerCount === 0 ? ["No PRG layers are installed. Run prg-mcp setup --profile administrative and configure a synchronization runner."] : []),
+    ...(sourceStatus.installedLayerCount === 0
+      ? ["No PRG layers are installed. Data synchronization is not packaged in this build; prepare PRG data with a configured import pipeline."]
+      : []),
   ];
   return {
     ok: issues.length === 0,

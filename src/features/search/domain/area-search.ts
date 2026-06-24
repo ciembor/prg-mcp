@@ -19,7 +19,11 @@ export type AreaSearchResult = {
 
 export type AreaSearchOptions = {
   query: string;
+  code?: string;
+  layerId?: string;
+  layerIds?: readonly string[];
   snapshotId?: number;
+  validOn?: string;
   limit?: number;
 };
 

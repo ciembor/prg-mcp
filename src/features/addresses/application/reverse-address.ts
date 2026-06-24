@@ -1,7 +1,7 @@
 import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
-import { listInstalledAddressShards, openAddressShard, toAddressSummary, AddressToolError, type AddressRow, type AddressSummary } from "./address-model.js";
+import { addressRecoveryAction, listInstalledAddressShards, openAddressShard, toAddressSummary, AddressToolError, type AddressRow, type AddressSummary } from "./address-model.js";
 
 export type ReverseAddressInput = {
   readonly x: number;
@@ -31,7 +31,7 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
   const results: Array<AddressSummary & { distanceMeters: number }> = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
 
-  assertDataInstalled(installedShards.length > 0, "PRG address data is not installed for the requested scope.", addressSyncCommand(input.voivodeshipCodes));
+  assertDataInstalled(installedShards.length > 0, "PRG address data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
 
   for (const voivodeshipCode of installedShards) {
     const database = openAddressShard(config, voivodeshipCode);
@@ -101,12 +101,6 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     point: [input.x, input.y],
     radiusMeters,
   };
-}
-
-function addressSyncCommand(voivodeshipCodes?: readonly PrgVoivodeshipCode[]): string {
-  return voivodeshipCodes && voivodeshipCodes.length === 1
-    ? `prg-mcp setup --profile addresses --teryt ${voivodeshipCodes[0]}`
-    : "prg-mcp setup --profile addresses";
 }
 
 function distance(x1: number, y1: number, x2: number, y2: number): number {

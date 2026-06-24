@@ -2,7 +2,7 @@ import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
 import { searchAddresses as searchAddressFts } from "../../search/index.js";
-import { listInstalledAddressShards, openAddressShard, toAddressSummary, type AddressRow, type AddressSummary } from "./address-model.js";
+import { addressRecoveryAction, listInstalledAddressShards, openAddressShard, toAddressSummary, type AddressRow, type AddressSummary } from "./address-model.js";
 
 export type AddressStructuredQuery = {
   readonly localityName?: string;
@@ -31,7 +31,7 @@ export async function searchAddresses(config: PrgConfig, input: SearchAddressesI
   const addresses: AddressSummary[] = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
 
-  assertDataInstalled(installedShards.length > 0, "PRG address data is not installed for the requested scope.", addressSyncCommand(input.voivodeshipCodes));
+  assertDataInstalled(installedShards.length > 0, "PRG address data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
 
   for (const voivodeshipCode of installedShards) {
     const database = openAddressShard(config, voivodeshipCode);
@@ -57,12 +57,6 @@ export async function searchAddresses(config: PrgConfig, input: SearchAddressesI
   }
 
   return { addresses: addresses.slice(0, limit) };
-}
-
-function addressSyncCommand(voivodeshipCodes?: readonly PrgVoivodeshipCode[]): string {
-  return voivodeshipCodes && voivodeshipCodes.length === 1
-    ? `prg-mcp setup --profile addresses --teryt ${voivodeshipCodes[0]}`
-    : "prg-mcp setup --profile addresses";
 }
 
 function validateSearchInput(input: SearchAddressesInput): void {

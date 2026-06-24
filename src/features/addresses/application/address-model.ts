@@ -141,7 +141,7 @@ export function readAddressById(config: PrgConfig, addressId: string): AddressSu
   if (!database) {
     throw new DataNotInstalledError(
       `PRG address data is not installed for voivodeship ${identifier.voivodeshipCode}.`,
-      `prg-mcp setup --profile addresses --teryt ${identifier.voivodeshipCode}`,
+      addressRecoveryAction([identifier.voivodeshipCode]),
     );
   }
 
@@ -165,7 +165,7 @@ export function readStreetById(config: PrgConfig, streetId: string): StreetWithG
   if (!database) {
     throw new DataNotInstalledError(
       `PRG street data is not installed for voivodeship ${identifier.voivodeshipCode}.`,
-      `prg-mcp setup --profile addresses --teryt ${identifier.voivodeshipCode}`,
+      addressRecoveryAction([identifier.voivodeshipCode]),
     );
   }
 
@@ -180,6 +180,12 @@ export function readStreetById(config: PrgConfig, streetId: string): StreetWithG
   } finally {
     database.close();
   }
+}
+
+export function addressRecoveryAction(voivodeshipCodes?: readonly PrgVoivodeshipCode[]): string {
+  return voivodeshipCodes && voivodeshipCodes.length === 1
+    ? `Data synchronization is not packaged in this build; prepare PRG address data for voivodeship ${voivodeshipCodes[0]} with a configured import pipeline.`
+    : "Data synchronization is not packaged in this build; prepare PRG address data for the requested scope with a configured import pipeline.";
 }
 
 export function toAddressSummary(voivodeshipCode: PrgVoivodeshipCode, row: AddressRow): AddressSummary {
