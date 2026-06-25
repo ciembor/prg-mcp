@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import { assertDataInstalled, databaseFileExists } from "../../../shared/data-result.js";
+import { assertDataInstalled, databaseTableHasRows } from "../../../shared/data-result.js";
 import { decodeWkb } from "../../spatial/index.js";
 import { pointCoveredByPolygon } from "../../spatial/infrastructure/turf/geometry-predicates.js";
 import type { MultiPolygonGeometry, PolygonGeometry } from "../../spatial/index.js";
@@ -26,7 +26,7 @@ export type LocatePointResult = {
 
 export async function locatePoint(config: PrgConfig, input: LocatePointInput): Promise<LocatePointResult> {
   assertDataInstalled(
-    databaseFileExists(config, "boundaries.sqlite"),
+    databaseTableHasRows(config, "boundaries.sqlite", "areas"),
     "PRG boundary data is not installed.",
     "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
   );

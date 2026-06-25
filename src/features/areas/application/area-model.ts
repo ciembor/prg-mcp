@@ -62,7 +62,7 @@ export type AreaWithGeometry = AreaSummary & {
 
 export class AreaToolError extends Error {
   public constructor(
-    public readonly code: "AREA_NOT_FOUND" | "INVALID_AREA_ID" | "UNBOUNDED_SCAN_REFUSED" | "COST_LIMIT_EXCEEDED",
+    public readonly code: "AREA_NOT_FOUND" | "INVALID_AREA_ID" | "UNBOUNDED_SCAN_REFUSED" | "COST_LIMIT_EXCEEDED" | "VERTEX_LIMIT_EXCEEDED",
     message: string,
   ) {
     super(message);

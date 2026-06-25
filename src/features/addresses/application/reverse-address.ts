@@ -23,13 +23,13 @@ const maximumRadiusMeters = 10_000;
 export async function reverseAddress(config: PrgConfig, input: ReverseAddressInput): Promise<ReverseAddressResult> {
   const radiusMeters = input.radiusMeters ?? 500;
   const maxCandidates = Math.min(input.maxCandidates ?? 500, 5_000);
-  const queryCandidateLimit = maxCandidates + 1;
 
   if (radiusMeters > maximumRadiusMeters) {
     throw new AddressToolError("RADIUS_LIMIT_EXCEEDED", `reverse_address radius limit is ${maximumRadiusMeters} meters.`);
   }
 
   const results: Array<AddressSummary & { distanceMeters: number }> = [];
+  let inspectedCandidateCount = 0;
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
 
   assertDataInstalled(installedShards.length > 0, "PRG address data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
@@ -42,6 +42,7 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     }
 
     try {
+      const remainingCandidateBudget = maxCandidates + 1 - inspectedCandidateCount;
       let rows = database
         .prepare(`
           select addresses.*
@@ -59,7 +60,7 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
           maxY: input.y + radiusMeters,
           minX: input.x - radiusMeters,
           minY: input.y - radiusMeters,
-          queryCandidateLimit,
+          queryCandidateLimit: remainingCandidateBudget,
         }) as AddressRow[];
 
       if (rows.length === 0) {
@@ -77,14 +78,15 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
             maxY: input.y + radiusMeters,
             minX: input.x - radiusMeters,
             minY: input.y - radiusMeters,
-            queryCandidateLimit,
+            queryCandidateLimit: remainingCandidateBudget,
           }) as AddressRow[];
       }
 
-      if (rows.length > maxCandidates) {
+      if (inspectedCandidateCount + rows.length > maxCandidates) {
         throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
       }
 
+      inspectedCandidateCount += rows.length;
       results.push(
         ...rows
           .map((row) => ({ ...toAddressSummary(voivodeshipCode, row), distanceMeters: distance(input.x, input.y, row.x, row.y) }))

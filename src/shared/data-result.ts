@@ -64,8 +64,27 @@ export function assertDataInstalled(installed: boolean, message: string, recover
   if (!installed) throw new DataNotInstalledError(message, recoveryAction);
 }
 
-export function databaseFileExists(config: PrgConfig, name: string): boolean {
-  return existsSync(join(config.dataDir, name));
+export function databaseTableHasRows(config: PrgConfig, name: string, table: "addresses" | "areas" | "streets"): boolean {
+  const path = join(config.dataDir, name);
+  if (!existsSync(path)) return false;
+
+  try {
+    const database = new Database(path, { fileMustExist: true, readonly: true });
+    try {
+      const row = database.prepare(tableHasRowsSql(table)).get() as { present: number } | undefined;
+      return row !== undefined;
+    } finally {
+      database.close();
+    }
+  } catch {
+    return false;
+  }
+}
+
+function tableHasRowsSql(table: "addresses" | "areas" | "streets"): string {
+  if (table === "addresses") return "select 1 as present from addresses limit 1";
+  if (table === "areas") return "select 1 as present from areas limit 1";
+  return "select 1 as present from streets limit 1";
 }
 
 function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): { readonly pairs: readonly CoveragePair[]; readonly syncedAt: string | null } {

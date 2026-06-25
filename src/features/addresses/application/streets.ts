@@ -17,7 +17,7 @@ export type SearchStreetsResult = {
 export async function searchStreets(config: PrgConfig, input: SearchStreetsInput): Promise<SearchStreetsResult> {
   const limit = Math.min(input.limit ?? 20, 100);
   const streets: Array<StreetSummary & { readonly rank: StreetSearchResult }> = [];
-  const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
+  const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes, "streets");
 
   assertDataInstalled(installedShards.length > 0, "PRG street data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
 

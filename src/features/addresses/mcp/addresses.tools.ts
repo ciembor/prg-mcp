@@ -2,7 +2,7 @@ import { defineZodTool } from "@mcp-craftsman/zod";
 import * as z from "zod";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import { createDataResultMetadata, databaseFileExists } from "../../../shared/data-result.js";
+import { createDataResultMetadata, databaseTableHasRows } from "../../../shared/data-result.js";
 import { prgVoivodeshipCodes, type PrgVoivodeshipCode } from "../../persistence/index.js";
 import type { AddressSummary, StreetSummary } from "../application/address-model.js";
 import { decodeAddressId, decodeStreetId } from "../application/address-model.js";
@@ -200,10 +200,10 @@ export function createGetStreetTool(config: PrgConfig) {
 const dataResultMetadataShape = dataResultMetadataSchema.shape;
 
 function addressMetadata(config: PrgConfig, layerId: "A07" | "A08", voivodeshipCodes?: readonly PrgVoivodeshipCode[]) {
-  const requestedScopes = voivodeshipCodes?.map((code) => `voivodeship:${code}`);
+  const requestedScopes = (voivodeshipCodes ?? prgVoivodeshipCodes).map((code) => `voivodeship:${code}`);
   const fallbackScopes = voivodeshipCodes
-    ? voivodeshipCodes.filter((code) => databaseFileExists(config, `addresses-${code}.sqlite`)).map((code) => `voivodeship:${code}`)
-    : prgVoivodeshipCodes.filter((code) => databaseFileExists(config, `addresses-${code}.sqlite`)).map((code) => `voivodeship:${code}`);
+    ? voivodeshipCodes.filter((code) => databaseTableHasRows(config, `addresses-${code}.sqlite`, layerId === "A07" ? "addresses" : "streets")).map((code) => `voivodeship:${code}`)
+    : prgVoivodeshipCodes.filter((code) => databaseTableHasRows(config, `addresses-${code}.sqlite`, layerId === "A07" ? "addresses" : "streets")).map((code) => `voivodeship:${code}`);
 
   return createDataResultMetadata(config, {
     channels: ["address-package"],

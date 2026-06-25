@@ -5,7 +5,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import { DataNotInstalledError } from "../../../shared/data-result.js";
+import { DataNotInstalledError, databaseTableHasRows } from "../../../shared/data-result.js";
 import { prgVoivodeshipCodes, type PrgVoivodeshipCode } from "../../persistence/index.js";
 import { decodeWkb, type PrgGeometry } from "../../spatial/index.js";
 
@@ -128,14 +128,21 @@ export function openAddressShard(config: PrgConfig, voivodeshipCode: PrgVoivodes
   return new Database(databasePath, { readonly: true });
 }
 
-export function listInstalledAddressShards(config: PrgConfig, selected?: readonly PrgVoivodeshipCode[]): readonly PrgVoivodeshipCode[] {
+export function listInstalledAddressShards(config: PrgConfig, selected?: readonly PrgVoivodeshipCode[], table: "addresses" | "streets" = "addresses"): readonly PrgVoivodeshipCode[] {
   const allowed = selected ?? prgVoivodeshipCodes;
 
-  return allowed.filter((voivodeshipCode) => existsSync(join(config.dataDir, `addresses-${voivodeshipCode}.sqlite`)));
+  return allowed.filter((voivodeshipCode) => databaseTableHasRows(config, `addresses-${voivodeshipCode}.sqlite`, table));
 }
 
 export function readAddressById(config: PrgConfig, addressId: string): AddressSummary {
   const identifier = decodeAddressId(addressId);
+  if (!databaseTableHasRows(config, `addresses-${identifier.voivodeshipCode}.sqlite`, "addresses")) {
+    throw new DataNotInstalledError(
+      `PRG address data is not installed for voivodeship ${identifier.voivodeshipCode}.`,
+      addressRecoveryAction([identifier.voivodeshipCode]),
+    );
+  }
+
   const database = openAddressShard(config, identifier.voivodeshipCode);
 
   if (!database) {
@@ -160,6 +167,13 @@ export function readAddressById(config: PrgConfig, addressId: string): AddressSu
 
 export function readStreetById(config: PrgConfig, streetId: string): StreetWithGeometry {
   const identifier = decodeStreetId(streetId);
+  if (!databaseTableHasRows(config, `addresses-${identifier.voivodeshipCode}.sqlite`, "streets")) {
+    throw new DataNotInstalledError(
+      `PRG street data is not installed for voivodeship ${identifier.voivodeshipCode}.`,
+      addressRecoveryAction([identifier.voivodeshipCode]),
+    );
+  }
+
   const database = openAddressShard(config, identifier.voivodeshipCode);
 
   if (!database) {
@@ -202,7 +216,7 @@ export function toAddressSummary(voivodeshipCode: PrgVoivodeshipCode, row: Addre
     postalCodeNote: "postal_code_is_prg_attribute_not_postal_service_validation",
     sourceProperties: parseSourceProperties(row.source_properties_json),
     sourceScope: row.source_scope,
-    streetId: row.street_id,
+    streetId: row.street_id ? encodeStreetId({ objectId: row.street_id, voivodeshipCode }) : null,
     streetName: row.street_name,
     validFrom: row.valid_from,
     versionFrom: row.version_from,

@@ -2,6 +2,7 @@ import simplify from "@turf/simplify";
 
 import type { PrgConfig } from "../../../runtime/config.js";
 import type { PrgGeometry } from "../../spatial/index.js";
+import { AreaToolError } from "./area-model.js";
 import { getAreaWithGeometry } from "./get-area.js";
 
 export type AreaGeometryResult = {
@@ -45,7 +46,7 @@ export function vertexCount(geometry: PrgGeometry): number {
 }
 
 function simplifyToLimit(geometry: PrgGeometry, tolerance: number, maxVertices: number): PrgGeometry {
-  let simplified = validateGeoJsonGeometry(geometry);
+  let simplified = tolerance > 0 ? simplifyGeometry(validateGeoJsonGeometry(geometry), tolerance) : validateGeoJsonGeometry(geometry);
   let currentTolerance = tolerance;
 
   for (let attempt = 0; vertexCount(simplified) > maxVertices && attempt < 12; attempt += 1) {
@@ -53,11 +54,12 @@ function simplifyToLimit(geometry: PrgGeometry, tolerance: number, maxVertices: 
     simplified = simplifyGeometry(simplified, currentTolerance);
   }
 
-  if (tolerance > 0) {
-    simplified = simplifyGeometry(simplified, tolerance);
+  simplified = validateGeoJsonGeometry(simplified);
+  if (vertexCount(simplified) > maxVertices) {
+    throw new AreaToolError("VERTEX_LIMIT_EXCEEDED", `Geometry has ${vertexCount(simplified)} vertices after simplification; limit is ${maxVertices}.`);
   }
 
-  return validateGeoJsonGeometry(simplified);
+  return simplified;
 }
 
 function simplifyGeometry(geometry: PrgGeometry, tolerance: number): PrgGeometry {

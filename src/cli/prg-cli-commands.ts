@@ -114,7 +114,12 @@ async function runSetupCommand(config: PrgConfig, options: OptionMap, io: CliIo)
   }
   await mkdir(config.dataDir, { recursive: true });
   const disk = await statfs(config.dataDir);
+  const archiveYear = readIntegerOption(options, "archive-year");
+  if (profile === "administrative-history" && archiveYear === undefined) {
+    throw new Error("administrative-history requires --archive-year.");
+  }
   const plan = planSync({
+    archiveYear,
     availableDiskBytes: disk.bavail * disk.bsize,
     mode: "missing",
     profile,

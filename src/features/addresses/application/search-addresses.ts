@@ -2,7 +2,7 @@ import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
 import { compareAddressResults, searchAddresses as searchAddressFts, type AddressSearchResult } from "../../search/index.js";
-import { addressRecoveryAction, listInstalledAddressShards, openAddressShard, toAddressSummary, type AddressRow, type AddressSummary } from "./address-model.js";
+import { addressRecoveryAction, decodeStreetId, listInstalledAddressShards, openAddressShard, toAddressSummary, type AddressRow, type AddressSummary } from "./address-model.js";
 
 export type AddressStructuredQuery = {
   readonly localityName?: string;
@@ -28,6 +28,7 @@ export type SearchAddressesResult = {
 export async function searchAddresses(config: PrgConfig, input: SearchAddressesInput): Promise<SearchAddressesResult> {
   validateSearchInput(input);
   const limit = Math.min(input.limit ?? 20, 100);
+  const structuredQuery = input.structured ? normalizeStructuredQuery(input.structured) : undefined;
   const addresses: Array<AddressSummary & { readonly rank?: AddressSearchResult }> = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
 
@@ -43,7 +44,7 @@ export async function searchAddresses(config: PrgConfig, input: SearchAddressesI
     try {
       const shardResults = input.query
         ? searchAddressFts(database, { limit, query: input.query })
-        : searchStructuredObjectIds(database, input.structured ?? {}, limit).map((objectId) => ({ objectId }));
+        : searchStructuredObjectIds(database, structuredQuery ?? {}, limit).map((objectId) => ({ objectId }));
       const objectIds = shardResults.map((result) => result.objectId);
 
       if (objectIds.length === 0) {
@@ -67,6 +68,25 @@ function validateSearchInput(input: SearchAddressesInput): void {
 
   if (hasQuery === hasStructured) {
     throw new Error("search_addresses requires exactly one of query or structured input.");
+  }
+
+  if (input.structured && Object.values(input.structured).every((value) => value === undefined || value === "")) {
+    throw new Error("search_addresses structured input requires at least one field.");
+  }
+}
+
+function normalizeStructuredQuery(query: AddressStructuredQuery): AddressStructuredQuery {
+  return {
+    ...query,
+    streetId: query.streetId ? decodeStructuredStreetId(query.streetId) : undefined,
+  };
+}
+
+function decodeStructuredStreetId(streetId: string): string {
+  try {
+    return decodeStreetId(streetId).objectId;
+  } catch {
+    return streetId;
   }
 }
 

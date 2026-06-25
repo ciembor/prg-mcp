@@ -62,11 +62,25 @@ describe("P5 area tools", () => {
       objectId: "gmina-wieliszew",
     });
 
-    const geometry = await getAreaGeometry(config, { areaId: gminaAreaId, maxVertices: 4, toleranceMeters: 1 });
+    const geometry = await getAreaGeometry(config, { areaId: gminaAreaId, maxVertices: 5, toleranceMeters: 1 });
 
     expect(geometry.crs).toBe("EPSG:2180");
     expect(geometry.layerId).toBe("A03");
     expect(geometry.vertexCount).toBeLessThanOrEqual(vertexCount(square));
+    await expect(getAreaGeometry(config, { areaId: gminaAreaId, maxVertices: 4, toleranceMeters: 0 })).rejects.toMatchObject({
+      code: "VERTEX_LIMIT_EXCEEDED",
+    });
+  });
+
+  it("does not treat an empty initialized boundaries database as installed data", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "prg-empty-boundaries-"));
+    temporaryDirectories.push(directory);
+    initializePrgDatabases({ addressShardCodes: ["02"], dataDir: directory });
+    const config = loadPrgConfig({ configDir: directory, dataDir: directory, logLevel: "silent", port: 0, transport: "stdio" }, {});
+
+    await expect(searchAreas(config, { category: "administrative", query: "Wieliszew" })).rejects.toMatchObject({
+      code: "DATA_NOT_INSTALLED",
+    });
   });
 
   it("locates all overlapping territorial competences and includes boundary points", async () => {

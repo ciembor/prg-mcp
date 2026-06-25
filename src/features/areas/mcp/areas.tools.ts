@@ -2,7 +2,7 @@ import { defineZodTool } from "@mcp-craftsman/zod";
 import * as z from "zod";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import { databaseFileExists } from "../../../shared/data-result.js";
+import { databaseTableHasRows } from "../../../shared/data-result.js";
 import { createDataResultMetadata } from "../../../shared/data-result.js";
 import { getPrgLayer, listPrgLayers, prgLayerCategories } from "../../source-catalog/index.js";
 import type { AreaSummary } from "../application/area-model.js";
@@ -201,7 +201,7 @@ function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; rea
 
   return createDataResultMetadata(config, {
     channels,
-    fallbackScopes: databaseFileExists(config, "boundaries.sqlite") ? ["country:PL"] : [],
+    fallbackScopes: databaseTableHasRows(config, "boundaries.sqlite", "areas") ? ["country:PL"] : [],
     layerIds,
     requestedScopes: ["country:PL"],
   });

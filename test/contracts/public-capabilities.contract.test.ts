@@ -116,6 +116,18 @@ describe("public capability contracts", () => {
     });
   });
 
+  it("reports unconstrained address coverage as incomplete when only selected shards are installed", async () => {
+    const result = await callTool(createContractApp(), "search_addresses", { query: "Warszawa Żurawia 12A" });
+
+    expect(result.structuredContent).toMatchObject({
+      coverage: {
+        complete: false,
+      },
+      datasetState: "installed",
+    });
+    expect((result.structuredContent as { coverage: { missingScopes: string[] } }).coverage.missingScopes).toContain("voivodeship:02");
+  });
+
   it("returns stable errors for invalid public tool input", async () => {
     const app = createContractApp();
 

@@ -30,7 +30,7 @@ describe("P6 address tools", () => {
   });
 
   it("searches addresses by natural language and structured mutually exclusive inputs", async () => {
-    const { config, warszawaAddressId } = await createAddressFixture();
+    const { config, warszawaAddressId, zurawiaStreetId } = await createAddressFixture();
 
     await expect(searchAddresses(config, { query: "Warszawa ul. Żurawia 12A", voivodeshipCodes: ["14"] })).resolves.toMatchObject({
       addresses: [{ addressId: warszawaAddressId, buildingNumber: "12A", localityName: "Warszawa", streetName: "Żurawia" }],
@@ -46,6 +46,13 @@ describe("P6 address tools", () => {
       voivodeshipCodes: ["14"],
     })).resolves.toMatchObject({ addresses: [] });
     await expect(searchAddresses(config, {
+      structured: { streetId: zurawiaStreetId },
+      voivodeshipCodes: ["14"],
+    })).resolves.toMatchObject({
+      addresses: [{ buildingNumber: "12A", streetId: zurawiaStreetId }],
+    });
+    await expect(searchAddresses(config, { structured: {}, voivodeshipCodes: ["14"] })).rejects.toThrow("structured input requires at least one field");
+    await expect(searchAddresses(config, {
       structured: { buildingNumber: "7", localityName: "Warszawa" },
       voivodeshipCodes: ["14"],
     })).resolves.toMatchObject({ addresses: [] });
@@ -53,7 +60,7 @@ describe("P6 address tools", () => {
   });
 
   it("gets address identifiers, IIP, coordinates, postal code attribute and source provenance", async () => {
-    const { config, warszawaAddressId } = await createAddressFixture();
+    const { config, warszawaAddressId, zurawiaStreetId } = await createAddressFixture();
 
     await expect(getAddress(config, warszawaAddressId)).resolves.toMatchObject({
       addressId: warszawaAddressId,
@@ -63,6 +70,11 @@ describe("P6 address tools", () => {
       postalCodeNote: "postal_code_is_prg_attribute_not_postal_service_validation",
       sourceProperties: { emuia_id: "warszawa-1" },
       sourceScope: "woj:14",
+      streetId: zurawiaStreetId,
+    });
+    await expect(getStreet(config, (await getAddress(config, warszawaAddressId)).streetId ?? "")).resolves.toMatchObject({
+      name: "Żurawia",
+      streetId: zurawiaStreetId,
     });
     expect(decodeAddressId(warszawaAddressId)).toEqual({ objectId: "pa-waw-zurawia-12a", voivodeshipCode: "14" });
   });
@@ -87,6 +99,51 @@ describe("P6 address tools", () => {
     });
     await expect(reverseAddress(config, { radiusMeters: 20, voivodeshipCodes: ["14"], x: 1, y: 1 })).resolves.toMatchObject({ addresses: [] });
     await expect(reverseAddress(config, { radiusMeters: 10_001, x: 1, y: 1 })).rejects.toMatchObject({ code: "RADIUS_LIMIT_EXCEEDED" });
+
+    const lodz = new Database(join(config.dataDir, "addresses-10.sqlite"));
+    const mazowieckie = new Database(join(config.dataDir, "addresses-14.sqlite"));
+    try {
+      insertAddress(lodz, {
+        buildingNumber: "1",
+        localityName: "Limitowo",
+        municipalityCode: "1061011",
+        objectId: "pa-limit-10",
+        rowid: 50,
+        streetName: null,
+        x: 100,
+        y: 100,
+      });
+      insertAddress(mazowieckie, {
+        buildingNumber: "2",
+        localityName: "Limitowo",
+        municipalityCode: "1465011",
+        objectId: "pa-limit-14",
+        rowid: 50,
+        streetName: null,
+        x: 100,
+        y: 100,
+      });
+    } finally {
+      lodz.close();
+      mazowieckie.close();
+    }
+    await expect(reverseAddress(config, { maxCandidates: 1, radiusMeters: 20, voivodeshipCodes: ["10", "14"], x: 100, y: 100 })).rejects.toMatchObject({
+      code: "CANDIDATE_LIMIT_EXCEEDED",
+    });
+  });
+
+  it("does not treat empty initialized address shards as installed data", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "prg-empty-address-shard-"));
+    temporaryDirectories.push(directory);
+    initializePrgDatabases({ addressShardCodes: ["14"], dataDir: directory });
+    const config = loadPrgConfig({ configDir: directory, dataDir: directory, logLevel: "silent", port: 0, transport: "stdio" }, {});
+
+    await expect(searchAddresses(config, { query: "Warszawa", voivodeshipCodes: ["14"] })).rejects.toMatchObject({
+      code: "DATA_NOT_INSTALLED",
+    });
+    await expect(searchStreets(config, { query: "Żurawia", voivodeshipCodes: ["14"] })).rejects.toMatchObject({
+      code: "DATA_NOT_INSTALLED",
+    });
   });
 
   it("searches and gets streets even when no address points reference them", async () => {
@@ -159,7 +216,7 @@ describe("P6 address tools", () => {
     });
   });
 
-  async function createAddressFixture(): Promise<{ config: PrgConfig; warszawaAddressId: string; lonelyStreetId: string }> {
+  async function createAddressFixture(): Promise<{ config: PrgConfig; warszawaAddressId: string; lonelyStreetId: string; zurawiaStreetId: string }> {
     const directory = await mkdtemp(join(tmpdir(), "prg-address-tools-"));
     temporaryDirectories.push(directory);
     const { addressShardPaths } = initializePrgDatabases({ addressShardCodes: ["10", "12", "14"], dataDir: directory });
@@ -178,6 +235,7 @@ describe("P6 address tools", () => {
       config: loadPrgConfig({ configDir: directory, dataDir: directory, logLevel: "silent", port: 0, transport: "stdio" }, {}),
       lonelyStreetId: encodeStreetId({ objectId: "ul-rondo-testowe", voivodeshipCode: "14" }),
       warszawaAddressId: encodeAddressId({ objectId: "pa-waw-zurawia-12a", voivodeshipCode: "14" }),
+      zurawiaStreetId: encodeStreetId({ objectId: "ul-zurawia", voivodeshipCode: "14" }),
     };
   }
 });
@@ -223,6 +281,7 @@ function insertFixtures(database: Database.Database, voivodeshipCode: "10" | "12
     rowid: 1,
     sourceProperties: { emuia_id: "warszawa-1" },
     streetName: "Żurawia",
+    streetId: "ul-zurawia",
     x: 637807,
     y: 486708,
   });
@@ -257,6 +316,7 @@ function insertFixtures(database: Database.Database, voivodeshipCode: "10" | "12
     y: 502000,
   });
   insertStreet(database, { name: "Rondo Testowe", objectId: "ul-rondo-testowe", rowid: 1 });
+  insertStreet(database, { name: "Żurawia", normalizedName: "zurawia", objectId: "ul-zurawia", rowid: 2 });
   rebuildStreetSearchIndex(database);
 }
 
@@ -267,6 +327,7 @@ type AddressFixture = {
   readonly municipalityCode: string;
   readonly localityName: string;
   readonly streetName: string | null;
+  readonly streetId?: string;
   readonly buildingNumber: string;
   readonly postalCode?: string;
   readonly x: number;
@@ -278,10 +339,10 @@ function insertAddress(database: Database.Database, fixture: AddressFixture): vo
   database
     .prepare(`
       insert into addresses (
-        rowid, object_id, iip_id, municipality_code, locality_name, street_name, building_number,
+        rowid, object_id, iip_id, municipality_code, locality_name, street_id, street_name, building_number,
         postal_code, x, y, source_scope, source_properties_json
       ) values (
-        @rowid, @objectId, @iipId, @municipalityCode, @localityName, @streetName, @buildingNumber,
+        @rowid, @objectId, @iipId, @municipalityCode, @localityName, @streetId, @streetName, @buildingNumber,
         @postalCode, @x, @y, 'woj:14', @sourcePropertiesJson
       )
     `)
@@ -294,6 +355,7 @@ function insertAddress(database: Database.Database, fixture: AddressFixture): vo
       postalCode: fixture.postalCode ?? null,
       rowid: fixture.rowid,
       sourcePropertiesJson: JSON.stringify(fixture.sourceProperties ?? {}),
+      streetId: fixture.streetId ?? null,
       streetName: fixture.streetName,
       x: fixture.x,
       y: fixture.y,

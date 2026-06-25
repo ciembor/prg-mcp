@@ -192,6 +192,26 @@ describe("prg-mcp CLI contract", () => {
     })).rejects.toThrow("poland-full requires --confirm-poland-full");
   });
 
+  it("requires archive year for administrative history setup", async () => {
+    await expect(runCli(["setup", "--profile", "administrative-history"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout: new MemoryWritable(),
+    })).rejects.toThrow("administrative-history requires --archive-year");
+
+    const stdout = new MemoryWritable();
+    await runCli(["setup", "--profile", "administrative-history", "--archive-year", "2024"], {
+      env: { MCP_DATA_DIR: contractDataDir },
+      stderr: new MemoryWritable(),
+      stdout,
+    });
+
+    expect(JSON.parse(stdout.content)).toMatchObject({
+      profile: "administrative-history",
+      syncStatus: "not_packaged",
+    });
+  });
+
   it("keeps setup diagnostics silent when requested", async () => {
     const stderr = new MemoryWritable();
 
