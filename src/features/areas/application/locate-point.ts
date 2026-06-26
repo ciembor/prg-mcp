@@ -34,7 +34,7 @@ export async function locatePoint(config: PrgConfig, input: LocatePointInput): P
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
 
   try {
-    const maxCandidates = Math.min(input.maxCandidates ?? Math.min((input.limit ?? 20) * 20, 2_000), 10_000);
+    const maxCandidates = Math.min(input.maxCandidates ?? 2_000, 10_000);
     const count = database
       .prepare(`
         select count(*) as count

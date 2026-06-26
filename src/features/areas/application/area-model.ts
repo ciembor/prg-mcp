@@ -78,7 +78,16 @@ export function decodeAreaId(areaId: string): AreaIdentifier {
   try {
     const parsed = JSON.parse(Buffer.from(areaId, "base64url").toString("utf8")) as Partial<AreaIdentifier>;
 
-    if (!Number.isInteger(parsed.snapshotId) || typeof parsed.layerId !== "string" || typeof parsed.objectId !== "string") {
+    if (
+      typeof parsed.snapshotId !== "number"
+      || !Number.isInteger(parsed.snapshotId)
+      || parsed.snapshotId <= 0
+      || typeof parsed.layerId !== "string"
+      || parsed.layerId.length === 0
+      || !getPrgLayer(parsed.layerId)
+      || typeof parsed.objectId !== "string"
+      || parsed.objectId.length === 0
+    ) {
       throw new Error("Invalid area identifier payload.");
     }
 

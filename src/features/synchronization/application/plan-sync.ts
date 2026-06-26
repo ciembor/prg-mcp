@@ -40,6 +40,7 @@ export type PlanSyncInput = {
 export function planSync(input: PlanSyncInput): SyncPlan {
   const layers = resolveLayers(input);
   const scopes = resolveScopes(input.teryt, layers.some((layer) => layer.sourceChannel === "address-package"));
+  validateScopeCompatibility(layers, scopes);
   validateArchive(input, layers, scopes);
 
   const targets = layers.flatMap((layer) => scopesForLayer(layer, scopes).map((scope) => createTarget(layer, scope, input.archiveYear)));
@@ -78,9 +79,6 @@ function resolveScopes(values: readonly string[] | undefined, addressesSelected:
       : [{ type: "country", code: "PL" }];
   }
   const scopes = [...new Set(values)].map(parseTerytScope);
-  if (!addressesSelected && scopes.some((scope) => scope.type !== "country")) {
-    throw new SyncPlanningError("TERYT scopes are supported only for address-package layers.", "INVALID_TERYT", { scopes });
-  }
   return scopes;
 }
 
@@ -102,6 +100,19 @@ function validateArchive(input: PlanSyncInput, layers: readonly PrgLayer[], scop
   const archive = input.archiveYear === undefined ? undefined : getPrgArchivalBoundaryPackage(input.archiveYear);
   if (!archive || layers.some((layer) => !archive.containsLayerIds.includes(layer.layerId as never)) || scopes.some((scope) => scope.type !== "country")) {
     throw new SyncPlanningError("Requested immutable administrative archive is not available for this selection.", "ARCHIVE_NOT_AVAILABLE", { archiveYear: input.archiveYear });
+  }
+}
+
+function validateScopeCompatibility(layers: readonly PrgLayer[], scopes: readonly SyncScope[]): void {
+  const hasWfsLayer = layers.some((layer) => layer.sourceChannel === "wfs");
+  const hasAddressLayer = layers.some((layer) => layer.sourceChannel === "address-package");
+  const hasNonCountryScope = scopes.some((scope) => scope.type !== "country");
+
+  if (hasWfsLayer && hasNonCountryScope) {
+    const message = hasAddressLayer
+      ? "Mixed WFS and address-package layers cannot use non-country TERYT scopes because WFS layers are country-wide."
+      : "TERYT scopes are supported only for address-package layers.";
+    throw new SyncPlanningError(message, "INVALID_TERYT", { scopes });
   }
 }
 

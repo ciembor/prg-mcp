@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 import simplify from "@turf/simplify";
 
 import type { PrgConfig } from "../../../runtime/config.js";
@@ -32,7 +34,7 @@ export async function getAreaGeometry(
     crs: "EPSG:2180",
     geometry,
     layerId: area.layerId,
-    simplified: tolerance > 0 || originalVertexCount !== finalVertexCount,
+    simplified: originalVertexCount !== finalVertexCount || !isDeepStrictEqual(area.geometry, geometry),
     snapshotId: area.snapshotId,
     vertexCount: finalVertexCount,
   };

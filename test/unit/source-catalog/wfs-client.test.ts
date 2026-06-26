@@ -174,6 +174,27 @@ describe("WFS 2.0 client", () => {
     expect(new URL(requestedUrls[1] ?? "").searchParams.get("STARTINDEX")).toBe("2");
   });
 
+  it("ignores WFS next links that point to a different origin", async () => {
+    const requestedUrls: string[] = [];
+    const client = createWfsClient({
+      endpoint,
+      fetch: createFetchMock(requestedUrls, [
+        response(featureCollection({ numberMatched: "3", numberReturned: 2, next: "https://evil.example/page-2" })),
+        response(featureCollection({ numberMatched: "3", numberReturned: 1 })),
+      ]),
+      retry: { retries: 0 },
+    });
+
+    const pages = [];
+    for await (const page of client.getFeaturePages({ typeNames: ["ms:A00_Granice_panstwa"], count: 2 })) {
+      pages.push(page);
+    }
+
+    expect(pages).toHaveLength(2);
+    expect(new URL(requestedUrls[1] ?? "").origin).toBe(new URL(endpoint).origin);
+    expect(new URL(requestedUrls[1] ?? "").searchParams.get("STARTINDEX")).toBe("2");
+  });
+
   it("rejects non-finite WFS page counters", async () => {
     const client = createWfsClient({
       endpoint,

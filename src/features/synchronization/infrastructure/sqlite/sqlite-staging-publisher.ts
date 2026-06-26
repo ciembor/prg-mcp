@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { copyFile, mkdir, rename, rm, stat } from "node:fs/promises";
+import { mkdir, rename, rm, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { DownloadedSyncDataset, StagedPublication, SyncPublisher } from "../../application/run-sync.js";
@@ -25,7 +25,6 @@ export function createSqliteStagingPublisher(options: SqliteStagingPublisherOpti
         targetPath,
       };
       await mkdir(dirname(targetPath), { recursive: true });
-      if (await exists(targetPath)) await copyFile(targetPath, publication.stagingPath);
       try {
         await options.writeStaging(publication.stagingPath, target, dataset, metadata);
         return publication;

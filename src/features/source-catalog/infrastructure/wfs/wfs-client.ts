@@ -167,7 +167,7 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
         }
 
         startIndex += page.numberReturned;
-        nextUrl = page.next;
+        nextUrl = page.next ? sameOriginNextUrl(options.endpoint, page.next) : undefined;
       }
     },
   };
@@ -341,6 +341,16 @@ function isLastPage(page: Pick<WfsFeaturePage, "next" | "numberMatched" | "numbe
   if (page.next) return false;
   if (page.numberMatched !== "unknown") return startIndex + page.numberReturned >= page.numberMatched;
   return page.numberReturned < pageSize;
+}
+
+function sameOriginNextUrl(endpoint: string, next: string): string | undefined {
+  try {
+    const endpointUrl = new URL(endpoint);
+    const nextUrl = new URL(next, endpointUrl);
+    return nextUrl.origin === endpointUrl.origin ? nextUrl.toString() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function parseWfsNonNegativeInteger(value: string, attributeName: string): number {

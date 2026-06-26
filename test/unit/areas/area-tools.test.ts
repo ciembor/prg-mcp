@@ -36,9 +36,7 @@ describe("P5 area tools", () => {
     await expect(searchAreas(config, { code: "1408032", snapshotId: 2 })).resolves.toMatchObject({
       areas: [{ name: "Gmina Wieliszew 2025", snapshotId: 2 }],
     });
-    await expect(searchAreas(config, { code: "1408032", query: "nietrafiajacy tekst", snapshotId: 2 })).resolves.toMatchObject({
-      areas: [{ name: "Gmina Wieliszew 2025", snapshotId: 2 }],
-    });
+    await expect(searchAreas(config, { code: "1408032", query: "nietrafiajacy tekst", snapshotId: 2 })).resolves.toMatchObject({ areas: [] });
     await expect(searchAreas(config, { code: "Gmina Wieliszew", snapshotId: 1 })).resolves.toMatchObject({ areas: [] });
     await expect(searchAreas(config, { category: "address", query: "Wieliszew", snapshotId: 1 })).resolves.toMatchObject({ areas: [] });
   });

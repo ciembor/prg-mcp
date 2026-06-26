@@ -120,6 +120,10 @@ export function classifyTextMatch(
     return createTextMatch("contains", 0.72, normalizedQuery, normalizedCandidate);
   }
 
+  if (areQueryTokensCovered(tokenize(normalizedQuery), tokenize(normalizedCandidate))) {
+    return createTextMatch("contains", 0.68, normalizedQuery, normalizedCandidate);
+  }
+
   return classifyFuzzyMatch(normalizedQuery, normalizedCandidate, thresholds);
 }
 
@@ -211,6 +215,14 @@ function isOrderedTokenSubsequence(queryTokens: readonly string[], candidateToke
   }
 
   return true;
+}
+
+function areQueryTokensCovered(queryTokens: readonly string[], candidateTokens: readonly string[]): boolean {
+  if (queryTokens.length === 0 || candidateTokens.length === 0) {
+    return false;
+  }
+
+  return queryTokens.every((queryToken) => candidateTokens.some((candidateToken) => candidateToken === queryToken || candidateToken.startsWith(queryToken)));
 }
 
 function textMatchModeWeight(mode: TextMatchMode): number {

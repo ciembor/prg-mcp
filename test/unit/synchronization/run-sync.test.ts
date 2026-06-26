@@ -86,4 +86,46 @@ describe("synchronization orchestration", () => {
     expect(result.targets).toEqual([expect.objectContaining({ status: "unchanged" })]);
     expect(probe).not.toHaveBeenCalled();
   });
+
+  it("refreshes stale unchanged snapshots without downloading the dataset", async () => {
+    const plan = planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00"], mode: "stale" });
+    const saved: SnapshotMetadata[] = [];
+    const stage = vi.fn(async (target) => ({ id: target.layer.layerId, target }));
+    const result = await runSyncPlan(plan, {
+      publisher: {
+        publish: async () => undefined,
+        rollback: async () => undefined,
+        stage,
+      },
+      snapshots: {
+        find: async (datasetKey, scope) => ({
+          adapterVersion: "1", checkedAt: "2026-06-20T00:00:00.000Z", datasetKey,
+          downloadedAt: "2026-06-20T00:00:00.000Z", etag: "etag-1", lastModified: "Mon, 22 Jun 2026 00:00:00 GMT",
+          recordCount: 1, schemaFingerprint: "schema", scope, sha256: "abc", sourceUrl: "https://example.test/old",
+        }),
+        save: async (metadata) => { saved.push(metadata); },
+      },
+      source: {
+        download: async () => { throw new Error("download should not run"); },
+        probe: async () => ({
+          checkedAt: "2026-06-23T00:00:00.000Z",
+          etag: "etag-1",
+          lastModified: "Mon, 22 Jun 2026 00:00:00 GMT",
+          sourceUrl: "https://example.test/current",
+          status: "available",
+        }),
+      },
+      now: () => new Date("2026-06-23T00:00:00.000Z"),
+    });
+
+    expect(result.targets).toEqual([expect.objectContaining({ status: "unchanged" })]);
+    expect(stage).not.toHaveBeenCalled();
+    expect(saved).toEqual([
+      expect.objectContaining({
+        checkedAt: "2026-06-23T00:00:00.000Z",
+        downloadedAt: "2026-06-20T00:00:00.000Z",
+        sourceUrl: "https://example.test/current",
+      }),
+    ]);
+  });
 });

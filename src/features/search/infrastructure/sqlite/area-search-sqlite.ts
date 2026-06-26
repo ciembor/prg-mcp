@@ -42,7 +42,6 @@ export function searchAreaNames(database: Database.Database, options: AreaSearch
       layerId: options.layerId ?? null,
       layerIdsCsv: options.layerIds && options.layerIds.length > 0 ? options.layerIds.join(",") : null,
       limit: options.limit ?? 20,
-      normalizedCode: options.code ? normalizeAreaSearchText(options.code) : null,
       normalizedPrefix: `${escapeLike(normalizedQuery)}%`,
       normalizedQuery,
       snapshotId: options.snapshotId ?? null,
@@ -75,7 +74,7 @@ const searchAreaSql = `
     and (@snapshotId is null or areas.snapshot_id = @snapshotId)
     and (@layerId is null or areas.layer_id = @layerId)
     and (@layerIdsCsv is null or instr(',' || @layerIdsCsv || ',', ',' || areas.layer_id || ',') > 0)
-    and (@code is null or lower(coalesce(areas.code, '')) = lower(@code) or areas.normalized_name = @normalizedCode)
+    and (@code is null or lower(coalesce(areas.code, '')) = lower(@code))
     and (@validOn is null or (
       (areas.valid_from is null or areas.valid_from <= @validOn)
       and (areas.valid_to is null or areas.valid_to >= @validOn)

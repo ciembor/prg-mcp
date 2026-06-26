@@ -31,11 +31,12 @@ export async function listLayers(config: PrgConfig): Promise<readonly ListedLaye
   const counts = await readCounts(config.dataDir);
   return listPrgLayers().map((layer) => {
     const installedScopes = coverage.get(layer.layerId) ?? [];
+    const recordCount = counts.get(layer.layerId) ?? 0;
     return {
       ...layer,
-      available: installedScopes.length > 0,
+      available: installedScopes.length > 0 || recordCount > 0,
       installedScopes,
-      recordCount: counts.get(layer.layerId) ?? 0,
+      recordCount,
       usage: usageByCategory[layer.category],
     };
   });

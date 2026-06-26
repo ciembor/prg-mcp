@@ -54,12 +54,7 @@ function searchRows(database: Database.Database, input: SearchAreasInput): AreaR
     return searchByFilters(database, input);
   }
 
-  const textRows = searchByText(database, input);
-  if (!input.code) {
-    return textRows;
-  }
-
-  return mergeAreaRows(searchByFilters(database, { ...input, query: undefined }), textRows);
+  return searchByText(database, input);
 }
 
 function searchByText(database: Database.Database, input: SearchAreasInput): AreaRow[] {
@@ -92,22 +87,6 @@ function searchByText(database: Database.Database, input: SearchAreasInput): Are
     .all(parameters) as AreaRow[];
 
   return rows;
-}
-
-function mergeAreaRows(primary: readonly AreaRow[], secondary: readonly AreaRow[]): AreaRow[] {
-  const seen = new Set<number>();
-  const merged: AreaRow[] = [];
-
-  for (const row of [...primary, ...secondary]) {
-    if (seen.has(row.rowid)) {
-      continue;
-    }
-
-    seen.add(row.rowid);
-    merged.push(row);
-  }
-
-  return merged;
 }
 
 function searchByFilters(database: Database.Database, input: SearchAreasInput): AreaRow[] {

@@ -13,7 +13,10 @@ describe("SQLite staging publisher", () => {
     await writeFile(targetPath, "old");
     const publisher = createSqliteStagingPublisher({
       targetPath: () => targetPath,
-      writeStaging: async (path) => writeFile(path, "new"),
+      writeStaging: async (path) => {
+        await expect(readFile(path, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+        await writeFile(path, "new");
+      },
     });
     const publication = await publisher.stage({} as never, {} as never, {} as never);
     expect(await readFile(targetPath, "utf8")).toBe("old");

@@ -38,6 +38,9 @@ describe("P6 address tools", () => {
     await expect(searchAddresses(config, { query: "Warszawa Zurawia 12A", voivodeshipCodes: ["14"] })).resolves.toMatchObject({
       addresses: [{ addressId: warszawaAddressId, buildingNumber: "12A", localityName: "Warszawa", streetName: "Żurawia" }],
     });
+    await expect(searchAddresses(config, { query: "Żurawia 12A Warszawa", voivodeshipCodes: ["14"] })).resolves.toMatchObject({
+      addresses: [{ addressId: warszawaAddressId, buildingNumber: "12A", localityName: "Warszawa", streetName: "Żurawia" }],
+    });
     await expect(searchAddresses(config, {
       structured: { buildingNumber: "12/14", localityName: "Wieliszew" },
       voivodeshipCodes: ["14"],
@@ -50,9 +53,11 @@ describe("P6 address tools", () => {
     })).resolves.toMatchObject({ addresses: [] });
     await expect(searchAddresses(config, {
       structured: { streetId: zurawiaStreetId },
-      voivodeshipCodes: ["14"],
     })).resolves.toMatchObject({
-      addresses: [{ buildingNumber: "12A", streetId: zurawiaStreetId }],
+      addresses: [{ buildingNumber: "12A", streetId: zurawiaStreetId, voivodeshipCode: "14" }],
+    });
+    await expect(searchAddresses(config, { structured: { streetId: zurawiaStreetId }, voivodeshipCodes: ["10"] })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
     });
     await expect(searchAddresses(config, { structured: {}, voivodeshipCodes: ["14"] })).rejects.toThrow("structured input requires at least one field");
     await expect(searchAddresses(config, {
@@ -269,6 +274,18 @@ function insertFixtures(database: Database.Database, voivodeshipCode: "10" | "12
       streetName: "Aleja Jana Pawła II",
       x: 520000,
       y: 430000,
+    });
+    insertAddress(database, {
+      buildingNumber: "99",
+      localityName: "Łódź",
+      municipalityCode: "1061011",
+      objectId: "pa-lodz-duplicate-street-id",
+      postalCode: "90001",
+      rowid: 2,
+      streetId: "ul-zurawia",
+      streetName: "Żurawia",
+      x: 520001,
+      y: 430001,
     });
     return;
   }

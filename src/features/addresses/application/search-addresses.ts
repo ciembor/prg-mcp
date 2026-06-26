@@ -2,7 +2,17 @@ import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
 import { compareAddressResults, searchAddresses as searchAddressFts, type AddressSearchResult } from "../../search/index.js";
-import { addressRecoveryAction, decodeStreetId, listInstalledAddressShards, openAddressShard, toAddressSummary, type AddressRow, type AddressSummary } from "./address-model.js";
+import {
+  AddressToolError,
+  addressRecoveryAction,
+  decodeStreetId,
+  listInstalledAddressShards,
+  openAddressShard,
+  toAddressSummary,
+  type AddressRow,
+  type AddressSummary,
+  type StreetIdentifier,
+} from "./address-model.js";
 
 export type AddressStructuredQuery = {
   readonly localityName?: string;
@@ -25,12 +35,17 @@ export type SearchAddressesResult = {
   readonly addresses: readonly AddressSummary[];
 };
 
+type NormalizedStructuredQuery = AddressStructuredQuery & {
+  readonly streetIdentifier?: StreetIdentifier;
+};
+
 export async function searchAddresses(config: PrgConfig, input: SearchAddressesInput): Promise<SearchAddressesResult> {
   validateSearchInput(input);
   const limit = Math.min(input.limit ?? 20, 100);
   const structuredQuery = input.structured ? normalizeStructuredQuery(input.structured) : undefined;
   const addresses: Array<AddressSummary & { readonly rank?: AddressSearchResult }> = [];
-  const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
+  const shardSelection = selectAddressShards(input.voivodeshipCodes, structuredQuery?.streetIdentifier);
+  const installedShards = listInstalledAddressShards(config, shardSelection);
 
   assertDataInstalled(installedShards.length > 0, "PRG address data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
 
@@ -67,35 +82,52 @@ function validateSearchInput(input: SearchAddressesInput): void {
   const hasStructured = Boolean(input.structured);
 
   if (hasQuery === hasStructured) {
-    throw new Error("search_addresses requires exactly one of query or structured input.");
+    throw new AddressToolError("INVALID_INPUT", "search_addresses requires exactly one of query or structured input.");
   }
 
   if (input.structured && Object.values(input.structured).every((value) => value === undefined || value === "")) {
-    throw new Error("search_addresses structured input requires at least one field.");
+    throw new AddressToolError("INVALID_INPUT", "search_addresses structured input requires at least one field.");
   }
 
   if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
-    throw new Error("search_addresses limit must be a positive integer.");
+    throw new AddressToolError("INVALID_INPUT", "search_addresses limit must be a positive integer.");
   }
 
   if (input.voivodeshipCodes && input.voivodeshipCodes.length === 0) {
-    throw new Error("search_addresses voivodeshipCodes must not be empty.");
+    throw new AddressToolError("INVALID_INPUT", "search_addresses voivodeshipCodes must not be empty.");
   }
 }
 
-function normalizeStructuredQuery(query: AddressStructuredQuery): AddressStructuredQuery {
+function normalizeStructuredQuery(query: AddressStructuredQuery): NormalizedStructuredQuery {
+  const streetIdentifier = query.streetId ? decodeStructuredStreetId(query.streetId) : undefined;
   return {
     ...query,
-    streetId: query.streetId ? decodeStructuredStreetId(query.streetId) : undefined,
+    streetId: streetIdentifier?.objectId ?? query.streetId,
+    streetIdentifier,
   };
 }
 
-function decodeStructuredStreetId(streetId: string): string {
+function decodeStructuredStreetId(streetId: string): StreetIdentifier | undefined {
   try {
-    return decodeStreetId(streetId).objectId;
+    return decodeStreetId(streetId);
   } catch {
-    return streetId;
+    return undefined;
   }
+}
+
+function selectAddressShards(
+  requested: readonly PrgVoivodeshipCode[] | undefined,
+  identifier: StreetIdentifier | undefined,
+): readonly PrgVoivodeshipCode[] | undefined {
+  if (!identifier) {
+    return requested;
+  }
+
+  if (requested && !requested.includes(identifier.voivodeshipCode)) {
+    throw new AddressToolError("INVALID_INPUT", "search_addresses streetId voivodeship is outside requested voivodeshipCodes.");
+  }
+
+  return [identifier.voivodeshipCode];
 }
 
 function searchStructuredObjectIds(database: import("better-sqlite3").Database, query: AddressStructuredQuery, limit: number): string[] {

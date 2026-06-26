@@ -46,6 +46,7 @@ describe("paged synchronization sources", () => {
     const shards = partitionAddressRecordsByVoivodeship([record("a", "1465011"), record("b", "0201011")]);
     expect([...shards.keys()]).toEqual(["14", "02"]);
     expect(shards.get("14")?.[0]?.objectId).toBe("a");
+    expect(() => partitionAddressRecordsByVoivodeship([record("bad", "9901011")])).toThrow("no valid municipality code");
   });
 
   it("keeps address package discovery separate from payload download", async () => {

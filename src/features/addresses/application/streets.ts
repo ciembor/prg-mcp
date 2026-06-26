@@ -2,7 +2,17 @@ import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
 import { compareStreetResults, searchStreets as searchStreetFts, type StreetSearchResult } from "../../search/index.js";
-import { addressRecoveryAction, listInstalledAddressShards, openAddressShard, readStreetById, toStreetSummary, type StreetRow, type StreetSummary, type StreetWithGeometry } from "./address-model.js";
+import {
+  AddressToolError,
+  addressRecoveryAction,
+  listInstalledAddressShards,
+  openAddressShard,
+  readStreetById,
+  toStreetSummary,
+  type StreetRow,
+  type StreetSummary,
+  type StreetWithGeometry,
+} from "./address-model.js";
 
 export type SearchStreetsInput = {
   readonly query: string;
@@ -50,15 +60,15 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
 
 function validateSearchStreetsInput(input: SearchStreetsInput): void {
   if (!input.query) {
-    throw new Error("search_streets query is required.");
+    throw new AddressToolError("INVALID_INPUT", "search_streets query is required.");
   }
 
   if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
-    throw new Error("search_streets limit must be a positive integer.");
+    throw new AddressToolError("INVALID_INPUT", "search_streets limit must be a positive integer.");
   }
 
   if (input.voivodeshipCodes && input.voivodeshipCodes.length === 0) {
-    throw new Error("search_streets voivodeshipCodes must not be empty.");
+    throw new AddressToolError("INVALID_INPUT", "search_streets voivodeshipCodes must not be empty.");
   }
 }
 

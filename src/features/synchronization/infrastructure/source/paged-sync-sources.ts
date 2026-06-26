@@ -1,6 +1,7 @@
 import type { DownloadedSyncDataset, SyncSource } from "../../application/run-sync.js";
 import type { SourceProbe, SyncTarget } from "../../domain/sync-model.js";
 import type { SyncRecord } from "../../domain/sync-validation.js";
+import { prgVoivodeshipCodes } from "../../../persistence/index.js";
 
 export type SyncPage = {
   readonly bytes: Uint8Array;
@@ -74,7 +75,7 @@ export function partitionAddressRecordsByVoivodeship(records: readonly SyncRecor
   const shards = new Map<string, SyncRecord[]>();
   for (const record of records) {
     const shard = record.municipalityCode?.slice(0, 2);
-    if (!shard || !/^\d{2}$/u.test(shard)) throw new Error(`Address ${record.objectId} has no valid municipality code for sharding.`);
+    if (!shard || !prgVoivodeshipCodes.includes(shard as never)) throw new Error(`Address ${record.objectId} has no valid municipality code for sharding.`);
     const existing = shards.get(shard) ?? [];
     existing.push(record);
     shards.set(shard, existing);
