@@ -5,6 +5,9 @@ import { createAddressPackageSyncSource, createPagedWfsSyncSource, partitionAddr
 const record = (objectId: string, municipalityCode?: string): SyncRecord => ({
   bbox: [100_000, 100_000, 100_000, 100_000], crs: "EPSG:2180", municipalityCode, objectId, recordType: "address",
 });
+const street = (objectId: string, municipalityCode?: string): SyncRecord => ({
+  bbox: [100_000, 100_000, 100_000, 100_000], crs: "EPSG:2180", municipalityCode, objectId, recordType: "street",
+});
 
 describe("paged synchronization sources", () => {
   it("preserves overlapping WFS page records so validation can detect duplicates", async () => {
@@ -47,6 +50,18 @@ describe("paged synchronization sources", () => {
     expect([...shards.keys()]).toEqual(["14", "02"]);
     expect(shards.get("14")?.[0]?.objectId).toBe("a");
     expect(() => partitionAddressRecordsByVoivodeship([record("bad", "9901011")])).toThrow("no valid municipality code");
+  });
+
+  it("partitions street records without municipality code through referencing addresses", () => {
+    const shards = partitionAddressRecordsByVoivodeship([
+      { ...record("a", "1465011"), streetId: "street-shared" },
+      { ...record("b", "0201011"), streetId: "street-shared" },
+      street("street-shared"),
+    ]);
+
+    expect(shards.get("14")?.map(({ objectId }) => objectId)).toEqual(["a", "street-shared"]);
+    expect(shards.get("02")?.map(({ objectId }) => objectId)).toEqual(["b", "street-shared"]);
+    expect(() => partitionAddressRecordsByVoivodeship([street("orphan")])).toThrow("Street orphan has no valid municipality code");
   });
 
   it("keeps address package discovery separate from payload download", async () => {

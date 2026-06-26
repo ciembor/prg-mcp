@@ -114,14 +114,30 @@ describe("atomic import files", () => {
     const dataDir = await mkdtemp(join(tmpdir(), "prg-mcp-recovery-"));
     const targetPath = join(dataDir, "catalog.sqlite");
     const stagingPath = `${targetPath}.staging`;
+    const uuidStagingPath = `${targetPath}.staging-abc`;
     const temporaryPath = `${targetPath}.tmp-1-1`;
 
     await writeFile(stagingPath, "partial");
+    await writeFile(uuidStagingPath, "partial");
     await writeFile(temporaryPath, "partial");
     await writeFile(`${targetPath}.bak`, "backup");
 
     await expect(recoverInterruptedImport(dataDir)).resolves.toEqual({
-      removedTemporaryFiles: expect.arrayContaining([stagingPath, temporaryPath]),
+      removedTemporaryFiles: expect.arrayContaining([stagingPath, uuidStagingPath, temporaryPath]),
+      restoredBackups: [targetPath],
+    });
+    expect(await readFile(targetPath, "utf8")).toBe("backup");
+  });
+
+  it("recovers UUID-suffixed staging publisher backups", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-mcp-recovery-uuid-"));
+    const targetPath = join(dataDir, "boundaries.sqlite");
+    const backupPath = `${targetPath}.bak-abc`;
+
+    await writeFile(backupPath, "backup");
+
+    await expect(recoverInterruptedImport(dataDir)).resolves.toEqual({
+      removedTemporaryFiles: [],
       restoredBackups: [targetPath],
     });
     expect(await readFile(targetPath, "utf8")).toBe("backup");

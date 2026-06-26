@@ -73,14 +73,49 @@ export function createAddressPackageSyncSource(options: AddressPackageSourceOpti
 
 export function partitionAddressRecordsByVoivodeship(records: readonly SyncRecord[]): ReadonlyMap<string, readonly SyncRecord[]> {
   const shards = new Map<string, SyncRecord[]>();
+  const streetShardHints = streetShardHintsByObjectId(records);
   for (const record of records) {
-    const shard = record.municipalityCode?.slice(0, 2);
-    if (!shard || !prgVoivodeshipCodes.includes(shard as never)) throw new Error(`Address ${record.objectId} has no valid municipality code for sharding.`);
-    const existing = shards.get(shard) ?? [];
-    existing.push(record);
-    shards.set(shard, existing);
+    const explicitShard = shardFromMunicipalityCode(record.municipalityCode);
+    const recordShards = explicitShard ? [explicitShard] : [...(streetShardHints.get(record.objectId) ?? [])];
+
+    if (recordShards.length === 0) {
+      const label = record.recordType === "street" ? "Street" : "Address";
+      throw new Error(`${label} ${record.objectId} has no valid municipality code for sharding.`);
+    }
+
+    for (const shard of recordShards) {
+      const existing = shards.get(shard) ?? [];
+      existing.push(record);
+      shards.set(shard, existing);
+    }
   }
   return shards;
+}
+
+function streetShardHintsByObjectId(records: readonly SyncRecord[]): ReadonlyMap<string, ReadonlySet<string>> {
+  const hints = new Map<string, Set<string>>();
+
+  for (const record of records) {
+    if (record.recordType !== "address" || !record.streetId) {
+      continue;
+    }
+
+    const shard = shardFromMunicipalityCode(record.municipalityCode);
+    if (!shard) {
+      continue;
+    }
+
+    const existing = hints.get(record.streetId) ?? new Set<string>();
+    existing.add(shard);
+    hints.set(record.streetId, existing);
+  }
+
+  return hints;
+}
+
+function shardFromMunicipalityCode(municipalityCode: string | undefined): string | undefined {
+  const shard = municipalityCode?.slice(0, 2);
+  return shard && prgVoivodeshipCodes.includes(shard as never) ? shard : undefined;
 }
 
 function dataset(records: readonly SyncRecord[], bytes: Uint8Array, options: PagedWfsSourceOptions): DownloadedSyncDataset {

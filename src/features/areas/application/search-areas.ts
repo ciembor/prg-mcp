@@ -152,6 +152,10 @@ function validateSearchAreasInput(input: SearchAreasInput): void {
   if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
     throw new AreaToolError("INVALID_INPUT", "search_areas limit must be a positive integer.");
   }
+
+  if (!input.query && !input.code && !input.layerId && !input.category) {
+    throw new AreaToolError("INVALID_INPUT", "search_areas requires query, code, layerId or category.");
+  }
 }
 
 function isAreaLayerId(layerId: string): boolean {

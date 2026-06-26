@@ -43,6 +43,7 @@ export async function locatePoint(config: PrgConfig, input: LocatePointInput): P
         where @x between areas_rtree.min_x and areas_rtree.max_x
           and @y between areas_rtree.min_y and areas_rtree.max_y
           and (@snapshotId is null or areas.snapshot_id = @snapshotId)
+          and instr(',' || @polygonLayerIdsCsv || ',', ',' || areas.layer_id || ',') > 0
           and (@layerIdsCsv is null or instr(',' || @layerIdsCsv || ',', ',' || areas.layer_id || ',') > 0)
           and (@categoryLayerIdsCsv is null or instr(',' || @categoryLayerIdsCsv || ',', ',' || areas.layer_id || ',') > 0)
           and (@validOn is null or areas.valid_from is null or areas.valid_from <= @validOn)
@@ -62,6 +63,7 @@ export async function locatePoint(config: PrgConfig, input: LocatePointInput): P
         where @x between areas_rtree.min_x and areas_rtree.max_x
           and @y between areas_rtree.min_y and areas_rtree.max_y
           and (@snapshotId is null or areas.snapshot_id = @snapshotId)
+          and instr(',' || @polygonLayerIdsCsv || ',', ',' || areas.layer_id || ',') > 0
           and (@layerIdsCsv is null or instr(',' || @layerIdsCsv || ',', ',' || areas.layer_id || ',') > 0)
           and (@categoryLayerIdsCsv is null or instr(',' || @categoryLayerIdsCsv || ',', ',' || areas.layer_id || ',') > 0)
           and (@validOn is null or areas.valid_from is null or areas.valid_from <= @validOn)
@@ -110,11 +112,18 @@ function parameters(input: LocatePointInput): Record<string, unknown> {
   return {
     categoryLayerIdsCsv: layerIdsForCategory(input.category),
     layerIdsCsv: input.layerIds && input.layerIds.length > 0 ? input.layerIds.join(",") : null,
+    polygonLayerIdsCsv: polygonLayerIds().join(","),
     snapshotId: input.snapshotId ?? null,
     validOn: input.validOn ?? null,
     x: input.x,
     y: input.y,
   };
+}
+
+function polygonLayerIds(): readonly string[] {
+  return listPrgLayers()
+    .filter((layer) => layer.sourceChannel === "wfs" && layer.geometryType === "polygon")
+    .map((layer) => layer.layerId);
 }
 
 function layerIdsForCategory(category: PrgLayerCategory | undefined): string | null {

@@ -193,9 +193,9 @@ function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; rea
   let layerIds: readonly string[];
 
   if (input.layerId) {
-    layerIds = [input.layerId];
+    layerIds = getPrgLayer(input.layerId) ? [input.layerId] : [];
   } else if (input.layerIds && input.layerIds.length > 0) {
-    layerIds = input.layerIds;
+    layerIds = input.layerIds.filter((layerId) => getPrgLayer(layerId));
   } else {
     layerIds = listPrgLayers()
       .filter((layer) => layer.sourceChannel === "wfs" && (!input.category || layer.category === input.category))

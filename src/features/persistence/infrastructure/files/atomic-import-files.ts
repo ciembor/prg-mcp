@@ -155,8 +155,9 @@ export async function recoverInterruptedImport(dataDir: string): Promise<PrgImpo
       continue;
     }
 
-    if (entry.name.endsWith(".bak")) {
-      const targetPath = path.slice(0, -".bak".length);
+    const backupTargetPath = backupTarget(entry.name, path);
+    if (backupTargetPath) {
+      const targetPath = backupTargetPath;
 
       if (!(await pathExists(targetPath))) {
         await rename(path, targetPath);
@@ -196,7 +197,16 @@ function createTemporaryPath(targetPath: string): string {
 }
 
 function isTemporaryImportFile(fileName: string): boolean {
-  return fileName.includes(".tmp-") || fileName.endsWith(".staging");
+  return fileName.includes(".tmp-") || fileName.endsWith(".staging") || fileName.includes(".staging-");
+}
+
+function backupTarget(fileName: string, path: string): string | undefined {
+  if (fileName.endsWith(".bak")) {
+    return path.slice(0, -".bak".length);
+  }
+
+  const markerIndex = path.lastIndexOf(".bak-");
+  return markerIndex === -1 ? undefined : path.slice(0, markerIndex);
 }
 
 async function pathExists(path: string): Promise<boolean> {

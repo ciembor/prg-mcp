@@ -1,8 +1,12 @@
 import { Writable } from "node:stream";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 
+import { initializePrgDatabases } from "../../src/features/persistence/index.js";
 import { runCli } from "../../src/cli.js";
 
 const contractDataDir = join(process.cwd(), ".tmp", "prg-mcp-cli-contract");
@@ -155,6 +159,30 @@ describe("prg-mcp CLI contract", () => {
       stderr: new MemoryWritable(),
       stdout: new MemoryWritable(),
     })).rejects.toThrow("--tolerance-meters must be at least 0.");
+  });
+
+  it("exports only snapshots with complete installed coverage", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-cli-incomplete-coverage-"));
+    const { catalogPath } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });
+    const database = new Database(catalogPath);
+    try {
+      database.prepare(`
+        insert into snapshots(dataset_key, scope, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
+        values ('current:A03', 'country:PL', '2026-06-23', '2026-06-23', 'abc', 1, 'schema', 'adapter', 'https://example.test')
+      `).run();
+      database.prepare(`
+        insert into installed_coverage(layer_id, scope_type, scope_code, snapshot_id, completeness)
+        values ('A03', 'country', 'PL', last_insert_rowid(), 'partial')
+      `).run();
+    } finally {
+      database.close();
+    }
+
+    await expect(runCli(["export", "--layer", "A03", "--id", "gmina"], {
+      env: { MCP_DATA_DIR: dataDir },
+      stderr: new MemoryWritable(),
+      stdout: new MemoryWritable(),
+    })).rejects.toThrow("No installed snapshot found for layer A03.");
   });
 
   it("shows setup estimate for the recommended administrative profile", async () => {

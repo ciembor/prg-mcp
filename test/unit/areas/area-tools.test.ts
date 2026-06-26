@@ -39,6 +39,7 @@ describe("P5 area tools", () => {
     await expect(searchAreas(config, { code: "1408032", query: "nietrafiajacy tekst", snapshotId: 2 })).resolves.toMatchObject({ areas: [] });
     await expect(searchAreas(config, { code: "Gmina Wieliszew", snapshotId: 1 })).resolves.toMatchObject({ areas: [] });
     await expect(searchAreas(config, { category: "address", query: "Wieliszew", snapshotId: 1 })).resolves.toMatchObject({ areas: [] });
+    await expect(searchAreas(config, {})).rejects.toMatchObject({ code: "INVALID_INPUT" });
   });
 
   it("keeps golden area queries for administrative, court, prosecution, police, tax, forest and maritime layers", async () => {
@@ -98,6 +99,9 @@ describe("P5 area tools", () => {
     ]);
     await expect(locatePoint(config, { category: "administrative", maxCandidates: 2, snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
       code: "COST_LIMIT_EXCEEDED",
+    });
+    await expect(locatePoint(config, { layerIds: ["A01", "A02", "A03", "W01"], maxCandidates: 3, snapshotId: 1, x: 10, y: 5 })).resolves.toMatchObject({
+      matches: [{ layerId: "A01" }, { layerId: "A02" }, { layerId: "A03" }],
     });
     await expect(locatePoint(config, { layerIds: ["NOPE"], snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
       code: "INVALID_INPUT",

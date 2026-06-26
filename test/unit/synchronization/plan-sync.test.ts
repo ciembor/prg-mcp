@@ -37,9 +37,23 @@ describe("PRG synchronization planner", () => {
     expect(() => planSync({ availableDiskBytes: 10 ** 12, mode: "missing", profile: "addresses", teryt: ["99"] })).toThrowError(
       expect.objectContaining({ code: "INVALID_TERYT" }),
     );
-    expect(() => planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00", "A07"], mode: "missing", teryt: ["14"] })).toThrowError(
+    expect(() => planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00"], mode: "missing", teryt: ["14"] })).toThrowError(
       expect.objectContaining({ code: "INVALID_TERYT" }),
     );
+  });
+
+  it("plans mixed WFS and address layers with channel-specific scopes", () => {
+    const plan = planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00", "A07"], mode: "missing", teryt: ["14"] });
+
+    expect(plan.targets.map((target) => [target.layer.layerId, target.scope.type, target.scope.code])).toEqual([
+      ["A00", "country", "PL"],
+      ["A07", "voivodeship", "14"],
+    ]);
+
+    const full = planSync({ availableDiskBytes: 10 ** 12, mode: "missing", profile: "poland-full" });
+    expect(full.targets.some((target) => target.layer.sourceChannel === "wfs" && target.scope.code === "PL")).toBe(true);
+    expect(full.targets.filter((target) => target.layer.layerId === "A07")).toHaveLength(16);
+    expect(full.targets.filter((target) => target.layer.layerId === "A08")).toHaveLength(16);
   });
 
   it("plans only catalogued immutable administrative archives", () => {

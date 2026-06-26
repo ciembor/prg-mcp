@@ -140,11 +140,60 @@ describe("P6 address tools", () => {
     });
   });
 
+  it("applies reverse candidate limits after exact circular distance filtering", async () => {
+    const { config } = await createAddressFixture();
+    const database = new Database(join(config.dataDir, "addresses-14.sqlite"));
+    try {
+      for (let index = 0; index < 5; index += 1) {
+        insertAddress(database, {
+          buildingNumber: String(index),
+          localityName: "Narożnik",
+          municipalityCode: "1465011",
+          objectId: `pa-corner-${index}`,
+          rowid: 100 + index,
+          streetName: null,
+          x: 10,
+          y: 10 + index,
+        });
+      }
+      insertAddress(database, {
+        buildingNumber: "1",
+        localityName: "Centrum",
+        municipalityCode: "1465011",
+        objectId: "pa-circle-center",
+        rowid: 110,
+        streetName: null,
+        x: 0,
+        y: 0,
+      });
+    } finally {
+      database.close();
+    }
+
+    await expect(reverseAddress(config, { maxCandidates: 1, radiusMeters: 10, voivodeshipCodes: ["14"], x: 0, y: 0 })).resolves.toMatchObject({
+      addresses: [{ objectId: "pa-circle-center" }],
+    });
+  });
+
   it("reverse-searches through the base address table when an old shard lacks R-tree", async () => {
     const { config } = await createAddressFixture();
     const database = new Database(join(config.dataDir, "addresses-14.sqlite"));
     try {
       database.prepare("drop table addresses_rtree").run();
+    } finally {
+      database.close();
+    }
+
+    await expect(reverseAddress(config, { radiusMeters: 20, voivodeshipCodes: ["14"], x: 637807, y: 486708 })).resolves.toMatchObject({
+      addresses: [{ buildingNumber: "12A", distanceMeters: 0 }],
+    });
+  });
+
+  it("reverse-searches through the base address table when R-tree is incomplete", async () => {
+    const { config } = await createAddressFixture();
+    const database = new Database(join(config.dataDir, "addresses-14.sqlite"));
+    try {
+      database.prepare("delete from addresses_rtree where rowid = 1").run();
     } finally {
       database.close();
     }

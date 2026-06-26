@@ -164,6 +164,7 @@ function readSnapshotId(config: PrgConfig, layerId: string, explicit: string | u
       select s.id as snapshotId
       from installed_coverage c join snapshots s on s.id = c.snapshot_id
       where c.layer_id = @layerId
+        and c.completeness = 'complete'
       order by s.downloaded_at desc, s.id desc
       limit 1
     `).get({ layerId }) as { snapshotId: number } | undefined;

@@ -111,11 +111,11 @@ export function encodeStreetId(identifier: StreetIdentifier): string {
 }
 
 export function decodeAddressId(addressId: string): AddressIdentifier {
-  return decodeIdentifier(addressId, "INVALID_ADDRESS_ID");
+  return decodeIdentifier<AddressIdentifier>(addressId, "INVALID_ADDRESS_ID");
 }
 
 export function decodeStreetId(streetId: string): StreetIdentifier {
-  return decodeIdentifier(streetId, "INVALID_STREET_ID");
+  return decodeIdentifier<StreetIdentifier>(streetId, "INVALID_STREET_ID");
 }
 
 export function openAddressShard(config: PrgConfig, voivodeshipCode: PrgVoivodeshipCode): Database.Database | undefined {
@@ -245,10 +245,10 @@ function toStreetWithGeometry(voivodeshipCode: PrgVoivodeshipCode, row: StreetRo
   };
 }
 
-function decodeIdentifier(
+function decodeIdentifier<T extends AddressIdentifier | StreetIdentifier>(
   value: string,
   errorCode: "INVALID_ADDRESS_ID" | "INVALID_STREET_ID",
-): AddressIdentifier {
+): T {
   try {
     const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Partial<AddressIdentifier>;
 
@@ -264,7 +264,7 @@ function decodeIdentifier(
     return {
       objectId: parsed.objectId,
       voivodeshipCode: parsed.voivodeshipCode,
-    };
+    } as T;
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown parse error";
 

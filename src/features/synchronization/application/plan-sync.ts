@@ -39,11 +39,11 @@ export type PlanSyncInput = {
 
 export function planSync(input: PlanSyncInput): SyncPlan {
   const layers = resolveLayers(input);
-  const scopes = resolveScopes(input.teryt, layers.some((layer) => layer.sourceChannel === "address-package"));
-  validateScopeCompatibility(layers, scopes);
-  validateArchive(input, layers, scopes);
+  const requestedScopes = resolveScopes(input.teryt);
+  validateScopeCompatibility(layers, requestedScopes);
+  validateArchive(input, layers, requestedScopes);
 
-  const targets = layers.flatMap((layer) => scopesForLayer(layer, scopes).map((scope) => createTarget(layer, scope, input.archiveYear)));
+  const targets = layers.flatMap((layer) => scopesForLayer(layer, requestedScopes).map((scope) => createTarget(layer, scope, input.archiveYear)));
   const estimatedDownloadBytes = sum(targets, "estimatedDownloadBytes");
   const estimatedDiskBytes = sum(targets, "estimatedDiskBytes");
   const requiredBytes = estimatedDiskBytes + (input.reserveDiskBytes ?? 256 * 1024 * 1024);
@@ -72,14 +72,11 @@ function resolveLayers(input: PlanSyncInput): readonly PrgLayer[] {
   });
 }
 
-function resolveScopes(values: readonly string[] | undefined, addressesSelected: boolean): readonly SyncScope[] {
+function resolveScopes(values: readonly string[] | undefined): readonly SyncScope[] | undefined {
   if (!values || values.length === 0) {
-    return addressesSelected
-      ? prgVoivodeshipCodes.map((code) => ({ code, shardCode: code, type: "voivodeship" }))
-      : [{ type: "country", code: "PL" }];
+    return undefined;
   }
-  const scopes = [...new Set(values)].map(parseTerytScope);
-  return scopes;
+  return [...new Set(values)].map(parseTerytScope);
 }
 
 function parseTerytScope(code: string): SyncScope {
@@ -95,29 +92,30 @@ function parseTerytScope(code: string): SyncScope {
   return { type, code, shardCode: code.slice(0, 2) };
 }
 
-function validateArchive(input: PlanSyncInput, layers: readonly PrgLayer[], scopes: readonly SyncScope[]): void {
+function validateArchive(input: PlanSyncInput, layers: readonly PrgLayer[], scopes: readonly SyncScope[] | undefined): void {
   if (input.profile !== "administrative-history" && input.archiveYear === undefined) return;
   const archive = input.archiveYear === undefined ? undefined : getPrgArchivalBoundaryPackage(input.archiveYear);
-  if (!archive || layers.some((layer) => !archive.containsLayerIds.includes(layer.layerId as never)) || scopes.some((scope) => scope.type !== "country")) {
+  if (!archive || layers.some((layer) => !archive.containsLayerIds.includes(layer.layerId as never)) || (scopes ?? []).some((scope) => scope.type !== "country")) {
     throw new SyncPlanningError("Requested immutable administrative archive is not available for this selection.", "ARCHIVE_NOT_AVAILABLE", { archiveYear: input.archiveYear });
   }
 }
 
-function validateScopeCompatibility(layers: readonly PrgLayer[], scopes: readonly SyncScope[]): void {
+function validateScopeCompatibility(layers: readonly PrgLayer[], scopes: readonly SyncScope[] | undefined): void {
   const hasWfsLayer = layers.some((layer) => layer.sourceChannel === "wfs");
   const hasAddressLayer = layers.some((layer) => layer.sourceChannel === "address-package");
-  const hasNonCountryScope = scopes.some((scope) => scope.type !== "country");
+  const hasNonCountryScope = (scopes ?? []).some((scope) => scope.type !== "country");
 
-  if (hasWfsLayer && hasNonCountryScope) {
-    const message = hasAddressLayer
-      ? "Mixed WFS and address-package layers cannot use non-country TERYT scopes because WFS layers are country-wide."
-      : "TERYT scopes are supported only for address-package layers.";
-    throw new SyncPlanningError(message, "INVALID_TERYT", { scopes });
+  if (hasWfsLayer && !hasAddressLayer && hasNonCountryScope) {
+    throw new SyncPlanningError("TERYT scopes are supported only for address-package layers.", "INVALID_TERYT", { scopes });
   }
 }
 
-function scopesForLayer(layer: PrgLayer, scopes: readonly SyncScope[]): readonly SyncScope[] {
-  return layer.sourceChannel === "address-package" ? scopes : [{ type: "country", code: "PL" }];
+function scopesForLayer(layer: PrgLayer, scopes: readonly SyncScope[] | undefined): readonly SyncScope[] {
+  if (layer.sourceChannel === "wfs") {
+    return [{ type: "country", code: "PL" }];
+  }
+
+  return scopes ?? prgVoivodeshipCodes.map((code) => ({ code, shardCode: code, type: "voivodeship" }));
 }
 
 function createTarget(layer: PrgLayer, scope: SyncScope, archiveYear?: number): SyncTarget {

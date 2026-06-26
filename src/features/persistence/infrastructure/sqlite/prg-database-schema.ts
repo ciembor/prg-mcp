@@ -50,7 +50,7 @@ export function initializePrgDatabases(options: InitializePrgDatabaseOptions): I
 }
 
 export function readPrgDatabaseSchemaState(databasePath: string): PrgDatabaseSchemaState {
-  return withDatabase(databasePath, (database) => {
+  return withReadonlyDatabase(databasePath, (database) => {
     const row = database
       .prepare("select kind, version, canonical_mapping_version from schema_metadata order by rowid desc limit 1")
       .get() as { kind: PrgDatabaseKind; version: number; canonical_mapping_version: string };
@@ -129,6 +129,15 @@ function migrateCatalogDatabase(database: Database.Database, appVersion: string)
     updateSchemaMetadata(database);
     database.pragma(`user_version = ${prgDatabaseSchemaVersion}`);
   })();
+}
+
+function withReadonlyDatabase<T>(path: string, callback: (database: Database.Database) => T): T {
+  const database = new Database(path, { fileMustExist: true, readonly: true });
+  try {
+    return callback(database);
+  } finally {
+    database.close();
+  }
 }
 
 function migrateBoundariesDatabase(database: Database.Database): void {
@@ -309,7 +318,7 @@ function createSchemaMetadata(database: Database.Database, kind: PrgDatabaseKind
       .prepare(
         "insert into schema_metadata(version, kind, canonical_mapping_version, created_at, app_version) values (?, ?, ?, ?, ?)",
       )
-      .run(prgDatabaseSchemaVersion, kind, prgCanonicalMappingVersion, new Date(0).toISOString(), appVersion);
+      .run(prgDatabaseSchemaVersion, kind, prgCanonicalMappingVersion, new Date().toISOString(), appVersion);
   }
 }
 

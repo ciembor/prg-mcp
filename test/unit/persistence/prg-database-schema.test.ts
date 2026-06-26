@@ -64,6 +64,9 @@ describe("PRG SQLite schema migrations", () => {
         expect.arrayContaining(["installed_coverage", "layers", "schema_metadata", "snapshots", "sync_runs"]),
       );
       expect(database.pragma("user_version", { simple: true })).toBe(prgDatabaseSchemaVersion);
+      expect((database.prepare("select created_at as createdAt from schema_metadata limit 1").get() as { createdAt: string }).createdAt).not.toBe(
+        "1970-01-01T00:00:00.000Z",
+      );
     });
   });
 
