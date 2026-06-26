@@ -32,7 +32,7 @@ describe("synchronization orchestration", () => {
     expect(saved[0]?.sha256).toHaveLength(64);
   });
 
-  it("does not roll back a published database after catalog metadata is saved when finalize cleanup fails", async () => {
+  it("does not fail or roll back a published database after catalog metadata is saved when finalize cleanup fails", async () => {
     const plan = planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00"], mode: "force" });
     const rollback = vi.fn(async () => undefined);
     const saved: SnapshotMetadata[] = [];
@@ -55,8 +55,35 @@ describe("synchronization orchestration", () => {
       now: () => new Date("2026-06-23T00:00:00.000Z"),
     });
 
-    expect(result.targets).toEqual([expect.objectContaining({ error: "cleanup failed", status: "failed" })]);
+    expect(result.targets).toEqual([expect.objectContaining({ status: "published" })]);
     expect(saved).toHaveLength(1);
     expect(rollback).not.toHaveBeenCalled();
+  });
+
+  it("does not probe remote sources for missing mode targets that already have snapshots", async () => {
+    const plan = planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00"], mode: "missing" });
+    const probe = vi.fn(async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test", status: "unavailable" as const }));
+    const result = await runSyncPlan(plan, {
+      publisher: {
+        publish: async () => undefined,
+        rollback: async () => undefined,
+        stage: async (target) => ({ id: target.layer.layerId, target }),
+      },
+      snapshots: {
+        find: async (datasetKey, scope) => ({
+          adapterVersion: "1", checkedAt: "2026-06-23T00:00:00.000Z", datasetKey,
+          downloadedAt: "2026-06-23T00:00:00.000Z", recordCount: 1, schemaFingerprint: "schema",
+          scope, sha256: "abc", sourceUrl: "https://example.test",
+        }),
+        save: async () => undefined,
+      },
+      source: {
+        download: async () => { throw new Error("download should not run"); },
+        probe,
+      },
+    });
+
+    expect(result.targets).toEqual([expect.objectContaining({ status: "unchanged" })]);
+    expect(probe).not.toHaveBeenCalled();
   });
 });

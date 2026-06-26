@@ -29,6 +29,7 @@ describe("source freshness and validation", () => {
     expect(shouldSynchronize("stale", snapshot, { checkedAt: changed.checkedAt, sourceUrl: snapshot.sourceUrl, status: "available" }, new Date("2026-06-23T12:00:00.000Z"))).toBe(false);
     expect(shouldSynchronize("missing", snapshot, changed)).toBe(false);
     expect(isFresh(snapshot, new Date("2026-06-23T23:59:00.000Z"))).toBe(true);
+    expect(isFresh({ ...snapshot, checkedAt: "2026-06-24T00:00:00.000Z" }, new Date("2026-06-23T23:59:00.000Z"))).toBe(false);
   });
 
   it("validates IDs, CRS, bbox and manifest count", () => {

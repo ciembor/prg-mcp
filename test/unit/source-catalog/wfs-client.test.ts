@@ -219,6 +219,21 @@ describe("WFS 2.0 client", () => {
       code: "SOURCE_TIMEOUT",
     } satisfies Partial<WfsClientError>);
   });
+
+  it("wraps terminal network failures as SOURCE_UNAVAILABLE", async () => {
+    const client = createWfsClient({
+      endpoint,
+      fetch: async () => {
+        throw new TypeError("network down");
+      },
+      retry: { retries: 0 },
+    });
+
+    await expect(client.getCapabilities()).rejects.toMatchObject({
+      name: "WfsClientError",
+      code: "SOURCE_UNAVAILABLE",
+    } satisfies Partial<WfsClientError>);
+  });
 });
 
 function createFetchMock(requestedUrls: string[], responses: WfsResponse[]): WfsFetch {

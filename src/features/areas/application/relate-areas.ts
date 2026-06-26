@@ -111,6 +111,7 @@ function validateRelateAreasInput(input: RelateAreasInput): void {
     throw new AreaToolError("INVALID_INPUT", "relate_areas maxCandidates must be a positive integer.");
   }
 
+  validateAreaCategory("relate_areas", input.category);
   validateAreaLayerIds("relate_areas", input.layerIds);
 }
 
@@ -136,7 +137,7 @@ function layerIdsForCategory(category: PrgLayerCategory | undefined): string | n
   }
 
   const layerIds = listPrgLayers()
-    .filter((layer) => layer.category === category)
+    .filter((layer) => layer.category === category && layer.sourceChannel === "wfs")
     .map((layer) => layer.layerId);
 
   if (layerIds.length === 0) {
@@ -144,6 +145,12 @@ function layerIdsForCategory(category: PrgLayerCategory | undefined): string | n
   }
 
   return layerIds.join(",");
+}
+
+function validateAreaCategory(toolName: string, category: PrgLayerCategory | undefined): void {
+  if (category === "address") {
+    throw new AreaToolError("INVALID_INPUT", `${toolName} category must refer to PRG area layers.`);
+  }
 }
 
 function validateAreaLayerIds(toolName: string, layerIds: readonly string[] | undefined): void {

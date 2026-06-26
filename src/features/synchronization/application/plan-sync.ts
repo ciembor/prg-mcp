@@ -72,7 +72,11 @@ function resolveLayers(input: PlanSyncInput): readonly PrgLayer[] {
 }
 
 function resolveScopes(values: readonly string[] | undefined, addressesSelected: boolean): readonly SyncScope[] {
-  if (!values || values.length === 0) return [{ type: "country", code: "PL" }];
+  if (!values || values.length === 0) {
+    return addressesSelected
+      ? prgVoivodeshipCodes.map((code) => ({ code, shardCode: code, type: "voivodeship" }))
+      : [{ type: "country", code: "PL" }];
+  }
   const scopes = [...new Set(values)].map(parseTerytScope);
   if (!addressesSelected && scopes.some((scope) => scope.type !== "country")) {
     throw new SyncPlanningError("TERYT scopes are supported only for address-package layers.", "INVALID_TERYT", { scopes });

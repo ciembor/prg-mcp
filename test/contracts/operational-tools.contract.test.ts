@@ -58,6 +58,25 @@ describe("operational MCP tools", () => {
     });
   });
 
+  it("does not mark partial installed coverage as available", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-partial-coverage-"));
+    const { catalogPath } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });
+    const database = new Database(catalogPath);
+    try {
+      const snapshot = database.prepare(`
+        insert into snapshots(dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
+        values ('current:A00','country:PL',null,'','2026-06-23','2026-06-23','abc',1,'schema','1','https://example.test')
+      `).run();
+      database.prepare("insert into installed_coverage(layer_id,scope_type,scope_code,snapshot_id,completeness) values ('A00','country','PL',?,'partial')").run(snapshot.lastInsertRowid);
+    } finally { database.close(); }
+
+    const app = createApp(testConfig(dataDir));
+    const layers = (await callTool(app, "list_layers", {})).structuredContent as { layers: Array<{ layerId: string; available: boolean }> };
+    const status = (await callTool(app, "source_status", {})).structuredContent;
+    expect(layers.layers.find((layer) => layer.layerId === "A00")).toMatchObject({ available: false });
+    expect(status).toMatchObject({ installedLayerCount: 0, sources: [] });
+  });
+
   it("does not expose sync_data until a real synchronization runner is wired", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "prg-sync-tool-"));
     await expect(callTool(createApp(testConfig(dataDir)), "sync_data", { profile: "administrative" })).rejects.toMatchObject({

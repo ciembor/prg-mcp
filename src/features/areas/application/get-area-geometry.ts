@@ -1,7 +1,7 @@
 import simplify from "@turf/simplify";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import type { PrgGeometry } from "../../spatial/index.js";
+import type { Position, PrgGeometry } from "../../spatial/index.js";
 import { AreaToolError } from "./area-model.js";
 import { getAreaWithGeometry } from "./get-area.js";
 
@@ -96,5 +96,67 @@ function validateGeoJsonGeometry(geometry: PrgGeometry): PrgGeometry {
     throw new Error("Unsupported GeoJSON geometry type.");
   }
 
+  validateGeometryCoordinates(geometry);
+
   return geometry;
+}
+
+function validateGeometryCoordinates(geometry: PrgGeometry): void {
+  if (geometry.type === "Point") {
+    validatePosition(geometry.coordinates);
+    return;
+  }
+
+  if (geometry.type === "MultiPoint") {
+    if (geometry.coordinates.length === 0) throw invalidGeometry("MultiPoint has no coordinates.");
+    geometry.coordinates.forEach(validatePosition);
+    return;
+  }
+
+  if (geometry.type === "LineString") {
+    validateLineString(geometry.coordinates);
+    return;
+  }
+
+  if (geometry.type === "MultiLineString") {
+    if (geometry.coordinates.length === 0) throw invalidGeometry("MultiLineString has no lines.");
+    geometry.coordinates.forEach(validateLineString);
+    return;
+  }
+
+  if (geometry.type === "Polygon") {
+    validatePolygon(geometry.coordinates);
+    return;
+  }
+
+  if (geometry.coordinates.length === 0) throw invalidGeometry("MultiPolygon has no polygons.");
+  geometry.coordinates.forEach(validatePolygon);
+}
+
+function validatePolygon(rings: readonly (readonly Position[])[]): void {
+  if (rings.length === 0) throw invalidGeometry("Polygon has no rings.");
+  for (const ring of rings) {
+    if (ring.length < 4) throw invalidGeometry("Polygon ring has fewer than 4 positions.");
+    ring.forEach(validatePosition);
+    const first = ring[0];
+    const last = ring.at(-1);
+    if (!first || !last || first[0] !== last[0] || first[1] !== last[1]) {
+      throw invalidGeometry("Polygon ring is not closed.");
+    }
+  }
+}
+
+function validateLineString(line: readonly Position[]): void {
+  if (line.length < 2) throw invalidGeometry("LineString has fewer than 2 positions.");
+  line.forEach(validatePosition);
+}
+
+function validatePosition(position: Position): void {
+  if (position.length !== 2 || !Number.isFinite(position[0]) || !Number.isFinite(position[1])) {
+    throw invalidGeometry("Geometry contains an invalid position.");
+  }
+}
+
+function invalidGeometry(message: string): Error {
+  return new AreaToolError("INVALID_INPUT", message);
 }

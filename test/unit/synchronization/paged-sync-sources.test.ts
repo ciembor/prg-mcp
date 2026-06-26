@@ -12,13 +12,34 @@ describe("paged synchronization sources", () => {
       adapterVersion: "1", schemaFingerprint: "schema", sourceUrl: "https://example.test/wfs",
       probe: async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test/wfs", status: "available" }),
       pages: async function* () {
-        yield { bytes: new Uint8Array([1]), next: true, numberMatched: 2, records: [record("a"), record("b")] };
-        yield { bytes: new Uint8Array([2]), next: false, numberMatched: 2, records: [record("b")] };
+        yield { bytes: new Uint8Array([1]), next: true, numberMatched: 3, records: [record("a"), record("b")] };
+        yield { bytes: new Uint8Array([2]), next: false, numberMatched: 3, records: [record("b")] };
       },
     });
     const downloaded = await source.download({} as never);
     expect(downloaded.records.map(({ objectId }) => objectId)).toEqual(["a", "b", "b"]);
     expect(downloaded.bytes).toEqual(new Uint8Array([1, 2]));
+  });
+
+  it("rejects inconsistent or excessive WFS page counts", async () => {
+    const inconsistent = createPagedWfsSyncSource({
+      adapterVersion: "1", schemaFingerprint: "schema", sourceUrl: "https://example.test/wfs",
+      probe: async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test/wfs", status: "available" }),
+      pages: async function* () {
+        yield { bytes: new Uint8Array([1]), next: true, numberMatched: 2, records: [record("a")] };
+        yield { bytes: new Uint8Array([2]), next: false, numberMatched: 3, records: [record("b")] };
+      },
+    });
+    await expect(inconsistent.download({} as never)).rejects.toThrow("numberMatched changed");
+
+    const excessive = createPagedWfsSyncSource({
+      adapterVersion: "1", schemaFingerprint: "schema", sourceUrl: "https://example.test/wfs",
+      probe: async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test/wfs", status: "available" }),
+      pages: async function* () {
+        yield { bytes: new Uint8Array([1]), next: false, numberMatched: 1, records: [record("a"), record("b")] };
+      },
+    });
+    await expect(excessive.download({} as never)).rejects.toThrow("WFS coverage mismatch");
   });
 
   it("partitions national address packages into voivodeship shards", () => {

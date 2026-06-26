@@ -45,7 +45,7 @@ async function readCoverage(dataDir: string): Promise<ReadonlyMap<string, readon
   const path = join(dataDir, "catalog.sqlite");
   if (!(await exists(path))) return new Map();
   const rows = readSafely(() => withReadonlyDatabase(path, (database) => database.prepare(
-    "select distinct layer_id as layerId, scope_type as scopeType, scope_code as scopeCode from installed_coverage order by layer_id, scope_type, scope_code",
+    "select distinct layer_id as layerId, scope_type as scopeType, scope_code as scopeCode from installed_coverage where completeness = 'complete' order by layer_id, scope_type, scope_code",
   ).all() as { layerId: string; scopeType: string; scopeCode: string }[])) ?? [];
   const result = new Map<string, string[]>();
   for (const row of rows) result.set(row.layerId, [...(result.get(row.layerId) ?? []), `${row.scopeType}:${row.scopeCode}`]);

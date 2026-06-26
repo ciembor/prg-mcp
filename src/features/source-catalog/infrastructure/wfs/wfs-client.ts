@@ -110,13 +110,7 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
           throw createHttpError(response, url);
         }
       } catch (error) {
-        if (isAbortError(error)) {
-          throw new WfsClientError("WFS request timed out.", "SOURCE_TIMEOUT", { url, timeoutMs });
-        }
-
-        if (error instanceof WfsClientError || attempt === retry.retries) {
-          throw error;
-        }
+        handleRequestError(error, { attempt, retries: retry.retries, timeoutMs, url });
       }
 
       await sleep(retry.initialDelayMs * 2 ** attempt);
@@ -177,6 +171,26 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
       }
     },
   };
+}
+
+function handleRequestError(
+  error: unknown,
+  context: { readonly attempt: number; readonly retries: number; readonly timeoutMs: number; readonly url: string },
+): void {
+  if (isAbortError(error)) {
+    throw new WfsClientError("WFS request timed out.", "SOURCE_TIMEOUT", { timeoutMs: context.timeoutMs, url: context.url });
+  }
+
+  if (error instanceof WfsClientError) {
+    throw error;
+  }
+
+  if (context.attempt === context.retries) {
+    throw new WfsClientError("WFS request failed.", "SOURCE_UNAVAILABLE", {
+      cause: error instanceof Error ? error.message : String(error),
+      url: context.url,
+    });
+  }
 }
 
 export function buildGetFeatureUrl(endpoint: string, request: WfsFeaturePageRequest): string {

@@ -1,5 +1,5 @@
 import type { PrgConfig } from "../../../runtime/config.js";
-import { assertDataInstalled } from "../../../shared/data-result.js";
+import { assertDataInstalled, isMissingSqliteTableError } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
 import { addressRecoveryAction, listInstalledAddressShards, openAddressShard, toAddressSummary, AddressToolError, type AddressRow, type AddressSummary } from "./address-model.js";
 
@@ -41,6 +41,10 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     throw new AddressToolError("INVALID_INPUT", "reverse_address limit must be a positive integer.");
   }
 
+  if (input.voivodeshipCodes && input.voivodeshipCodes.length === 0) {
+    throw new AddressToolError("INVALID_INPUT", "reverse_address voivodeshipCodes must not be empty.");
+  }
+
   if (radiusMeters > maximumRadiusMeters) {
     throw new AddressToolError("RADIUS_LIMIT_EXCEEDED", `reverse_address radius limit is ${maximumRadiusMeters} meters.`);
   }
@@ -58,43 +62,10 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     }
 
     try {
-      let rows = database
-        .prepare(`
-          select addresses.*
-          from addresses_rtree
-          join addresses on addresses.rowid = addresses_rtree.rowid
-          where addresses_rtree.min_x <= @maxX
-            and addresses_rtree.max_x >= @minX
-            and addresses_rtree.min_y <= @maxY
-            and addresses_rtree.max_y >= @minY
-          order by addresses.object_id asc
-          limit @queryCandidateLimit
-        `)
-        .all({
-          maxX: input.x + radiusMeters,
-          maxY: input.y + radiusMeters,
-          minX: input.x - radiusMeters,
-          minY: input.y - radiusMeters,
-          queryCandidateLimit: maxCandidates + 1,
-        }) as AddressRow[];
+      let rows = readRtreeCandidates(database, input.x, input.y, radiusMeters, maxCandidates + 1);
 
       if (rows.length === 0) {
-        rows = database
-          .prepare(`
-            select *
-            from addresses
-            where x between @minX and @maxX
-              and y between @minY and @maxY
-            order by object_id asc
-            limit @queryCandidateLimit
-          `)
-          .all({
-            maxX: input.x + radiusMeters,
-            maxY: input.y + radiusMeters,
-            minX: input.x - radiusMeters,
-            minY: input.y - radiusMeters,
-            queryCandidateLimit: maxCandidates + 1,
-          }) as AddressRow[];
+        rows = readTableCandidates(database, input.x, input.y, radiusMeters, maxCandidates + 1);
       }
 
       if (rows.length > maxCandidates) {
@@ -115,6 +86,53 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     addresses: limitGlobalCandidates(results, maxCandidates, limit),
     point: [input.x, input.y],
     radiusMeters,
+  };
+}
+
+function readRtreeCandidates(database: import("better-sqlite3").Database, x: number, y: number, radiusMeters: number, limit: number): AddressRow[] {
+  try {
+    return database
+      .prepare(`
+        select addresses.*
+        from addresses_rtree
+        join addresses on addresses.rowid = addresses_rtree.rowid
+        where addresses_rtree.min_x <= @maxX
+          and addresses_rtree.max_x >= @minX
+          and addresses_rtree.min_y <= @maxY
+          and addresses_rtree.max_y >= @minY
+        order by addresses.object_id asc
+        limit @queryCandidateLimit
+      `)
+      .all(candidateParameters(x, y, radiusMeters, limit)) as AddressRow[];
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+function readTableCandidates(database: import("better-sqlite3").Database, x: number, y: number, radiusMeters: number, limit: number): AddressRow[] {
+  return database
+    .prepare(`
+      select *
+      from addresses
+      where x between @minX and @maxX
+        and y between @minY and @maxY
+      order by object_id asc
+      limit @queryCandidateLimit
+    `)
+    .all(candidateParameters(x, y, radiusMeters, limit)) as AddressRow[];
+}
+
+function candidateParameters(x: number, y: number, radiusMeters: number, limit: number): Record<string, number> {
+  return {
+    maxX: x + radiusMeters,
+    maxY: y + radiusMeters,
+    minX: x - radiusMeters,
+    minY: y - radiusMeters,
+    queryCandidateLimit: limit,
   };
 }
 

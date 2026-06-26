@@ -4,6 +4,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
+import { isMissingSqliteTableError } from "../../../shared/data-result.js";
 import { listPrgLayers } from "../../source-catalog/index.js";
 
 export const operationalSourceStates = ["available", "changed", "unavailable", "schema_changed", "unknown"] as const;
@@ -35,7 +36,7 @@ export async function getSourceStatus(config: PrgConfig, checkRemote: boolean, p
   return {
     checkedRemote,
     coverage,
-    installedLayerCount: new Set(coverage.map((item) => item.layerId)).size,
+    installedLayerCount: new Set(coverage.filter((item) => item.completeness === "complete").map((item) => item.layerId)).size,
     remoteReason: checkRemote && !probe ? "Remote source status probe is not configured in this build." : undefined,
     remoteStatus: remoteStatus(checkRemote, checkedRemote),
     sources,
@@ -66,13 +67,19 @@ async function readCoverage(catalogPath: string): Promise<readonly CoverageStatu
       scopeType: row.scopeType,
       stateDate: row.stateDate ?? undefined,
     }));
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return [];
+    }
+
+    throw error;
   } finally {
     database.close();
   }
 }
 
 function localSourceStates(coverage: readonly CoverageStatus[]): SourceStatusResult["sources"] {
-  const keys = new Set(coverage.map((item) => item.datasetKey));
+  const keys = new Set(coverage.filter((item) => item.completeness === "complete").map((item) => item.datasetKey));
   return [...keys].sort().map((datasetKey) => ({ datasetKey, status: "unknown" as const }));
 }
 

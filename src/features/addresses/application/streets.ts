@@ -15,6 +15,7 @@ export type SearchStreetsResult = {
 };
 
 export async function searchStreets(config: PrgConfig, input: SearchStreetsInput): Promise<SearchStreetsResult> {
+  validateSearchStreetsInput(input);
   const limit = Math.min(input.limit ?? 20, 100);
   const streets: Array<StreetSummary & { readonly rank: StreetSearchResult }> = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes, "streets");
@@ -45,6 +46,20 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
       .slice(0, limit)
       .map(toStreetWithoutRank),
   };
+}
+
+function validateSearchStreetsInput(input: SearchStreetsInput): void {
+  if (!input.query) {
+    throw new Error("search_streets query is required.");
+  }
+
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
+    throw new Error("search_streets limit must be a positive integer.");
+  }
+
+  if (input.voivodeshipCodes && input.voivodeshipCodes.length === 0) {
+    throw new Error("search_streets voivodeshipCodes must not be empty.");
+  }
 }
 
 export async function getStreet(config: PrgConfig, streetId: string): Promise<StreetWithGeometry> {

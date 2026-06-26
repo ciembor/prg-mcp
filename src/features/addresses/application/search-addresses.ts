@@ -73,6 +73,14 @@ function validateSearchInput(input: SearchAddressesInput): void {
   if (input.structured && Object.values(input.structured).every((value) => value === undefined || value === "")) {
     throw new Error("search_addresses structured input requires at least one field.");
   }
+
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
+    throw new Error("search_addresses limit must be a positive integer.");
+  }
+
+  if (input.voivodeshipCodes && input.voivodeshipCodes.length === 0) {
+    throw new Error("search_addresses voivodeshipCodes must not be empty.");
+  }
 }
 
 function normalizeStructuredQuery(query: AddressStructuredQuery): AddressStructuredQuery {

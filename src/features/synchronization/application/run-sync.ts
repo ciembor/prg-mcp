@@ -64,6 +64,9 @@ async function synchronizeTarget(plan: SyncPlan, target: SyncTarget, dependencie
   let catalogSaved = false;
   try {
     const previous = await dependencies.snapshots.find(target.datasetKey, scope);
+    if (plan.mode === "missing" && previous) {
+      return { datasetKey: target.datasetKey, scope, status: "unchanged" };
+    }
     const conditional = previous && !target.archiveYear ? { etag: previous.etag, lastModified: previous.lastModified } : undefined;
     const probe = target.archiveYear ? undefined : await dependencies.source.probe(target, conditional);
     assertProbeUsable(plan.mode, probe);
@@ -77,7 +80,11 @@ async function synchronizeTarget(plan: SyncPlan, target: SyncTarget, dependencie
     await dependencies.publisher.publish(staged);
     await dependencies.snapshots.save(metadata, target);
     catalogSaved = true;
-    await dependencies.publisher.finalize?.(staged);
+    try {
+      await dependencies.publisher.finalize?.(staged);
+    } catch {
+      // Publication and catalog metadata are already durable; cleanup can be retried by recovery.
+    }
     return { datasetKey: target.datasetKey, scope, status: "published", recordCount: dataset.records.length };
   } catch (error) {
     if (staged && !catalogSaved) await dependencies.publisher.rollback(staged);

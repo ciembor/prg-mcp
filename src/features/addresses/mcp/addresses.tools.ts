@@ -92,7 +92,7 @@ export function createSearchAddressesTool(config: PrgConfig) {
         streetId: z.string().min(1).optional(),
         streetName: z.string().min(1).optional(),
       }).optional(),
-      voivodeshipCodes: z.array(voivodeshipCodeSchema).max(16).optional(),
+      voivodeshipCodes: z.array(voivodeshipCodeSchema).min(1).max(16).optional(),
     }).refine((input) => Boolean(input.query) !== Boolean(input.structured), {
       message: "search_addresses requires exactly one of query or structured.",
     }),
@@ -142,7 +142,7 @@ export function createReverseAddressTool(config: PrgConfig) {
       limit: z.number().int().min(1).max(100).default(10),
       maxCandidates: z.number().int().min(1).max(5_000).default(500),
       radiusMeters: z.number().positive().max(10_000).default(500),
-      voivodeshipCodes: z.array(voivodeshipCodeSchema).max(16).optional(),
+      voivodeshipCodes: z.array(voivodeshipCodeSchema).min(1).max(16).optional(),
       x: z.number().finite(),
       y: z.number().finite(),
     }),
@@ -168,7 +168,7 @@ export function createSearchStreetsTool(config: PrgConfig) {
     input: z.object({
       limit: z.number().int().min(1).max(100).default(20),
       query: z.string().min(1),
-      voivodeshipCodes: z.array(voivodeshipCodeSchema).max(16).optional(),
+      voivodeshipCodes: z.array(voivodeshipCodeSchema).min(1).max(16).optional(),
     }),
     name: "search_streets",
     output: z.object({ streets: z.array(streetSummarySchema) }).extend(dataResultMetadataShape),

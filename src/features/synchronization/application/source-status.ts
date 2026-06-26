@@ -2,7 +2,8 @@ import { defaultFreshnessPolicy, type FreshnessPolicy, type SnapshotMetadata, ty
 
 export function isFresh(snapshot: SnapshotMetadata, now: Date, policy: FreshnessPolicy = defaultFreshnessPolicy): boolean {
   const checkedAt = Date.parse(snapshot.checkedAt);
-  return Number.isFinite(checkedAt) && now.getTime() - checkedAt < policy.maxAgeMs;
+  const ageMs = now.getTime() - checkedAt;
+  return Number.isFinite(checkedAt) && ageMs >= 0 && ageMs < policy.maxAgeMs;
 }
 
 export function classifySourceProbe(snapshot: SnapshotMetadata | undefined, probe: Omit<SourceProbe, "status">): SourceProbe {

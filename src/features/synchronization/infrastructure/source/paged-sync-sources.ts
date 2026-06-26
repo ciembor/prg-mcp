@@ -27,15 +27,27 @@ export function createPagedWfsSyncSource(options: PagedWfsSourceOptions): SyncSo
       let expectedCount: number | "unknown" = "unknown";
       for await (const page of options.pages(target)) {
         chunks.push(page.bytes);
-        expectedCount = page.numberMatched;
+        expectedCount = mergeExpectedCount(expectedCount, page.numberMatched);
         records.push(...page.records);
       }
-      if (expectedCount !== "unknown" && records.length < expectedCount) {
+      if (expectedCount !== "unknown" && records.length !== expectedCount) {
         throw new Error(`WFS coverage mismatch: expected ${expectedCount}, received ${records.length} records.`);
       }
       return dataset(records, concatBytes(chunks), options);
     },
   };
+}
+
+function mergeExpectedCount(current: number | "unknown", next: number | "unknown"): number | "unknown" {
+  if (next === "unknown") {
+    return current;
+  }
+
+  if (current !== "unknown" && current !== next) {
+    throw new Error(`WFS numberMatched changed between pages: ${current} vs ${next}.`);
+  }
+
+  return next;
 }
 
 export type AddressPackage = {

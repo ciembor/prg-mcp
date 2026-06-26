@@ -102,6 +102,7 @@ function validateLocatePointInput(input: LocatePointInput): void {
     throw new AreaToolError("INVALID_INPUT", "locate_point maxCandidates must be a positive integer.");
   }
 
+  validateAreaCategory("locate_point", input.category);
   validateAreaLayerIds("locate_point", input.layerIds);
 }
 
@@ -119,10 +120,16 @@ function parameters(input: LocatePointInput): Record<string, unknown> {
 function layerIdsForCategory(category: PrgLayerCategory | undefined): string | null {
   if (!category) return null;
   const layerIds = listPrgLayers()
-    .filter((layer) => layer.category === category)
+    .filter((layer) => layer.category === category && layer.sourceChannel === "wfs")
     .map((layer) => layer.layerId);
 
   return layerIds.length === 0 ? "__none__" : layerIds.join(",");
+}
+
+function validateAreaCategory(toolName: string, category: PrgLayerCategory | undefined): void {
+  if (category === "address") {
+    throw new AreaToolError("INVALID_INPUT", `${toolName} category must refer to PRG area layers.`);
+  }
 }
 
 function validateAreaLayerIds(toolName: string, layerIds: readonly string[] | undefined): void {

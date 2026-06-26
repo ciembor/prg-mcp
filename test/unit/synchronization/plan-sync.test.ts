@@ -19,6 +19,14 @@ describe("PRG synchronization planner", () => {
     expect(plan.estimatedDiskBytes).toBeGreaterThan(plan.estimatedDownloadBytes);
   });
 
+  it("expands default address scope to voivodeship shards", () => {
+    const plan = planSync({ availableDiskBytes: 10 ** 12, mode: "missing", profile: "addresses" });
+
+    expect(plan.targets).toHaveLength(32);
+    expect(new Set(plan.targets.map((target) => target.scope.type))).toEqual(new Set(["voivodeship"]));
+    expect(plan.targets.filter((target) => target.layer.layerId === "A07")).toHaveLength(16);
+  });
+
   it("rejects invalid TERYT and insufficient free space before synchronization", () => {
     expect(() => planSync({ availableDiskBytes: 1, mode: "missing", profile: "administrative" })).toThrowError(
       expect.objectContaining({ code: "INSUFFICIENT_DISK_SPACE" }),

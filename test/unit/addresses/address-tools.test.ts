@@ -135,6 +135,20 @@ describe("P6 address tools", () => {
     });
   });
 
+  it("reverse-searches through the base address table when an old shard lacks R-tree", async () => {
+    const { config } = await createAddressFixture();
+    const database = new Database(join(config.dataDir, "addresses-14.sqlite"));
+    try {
+      database.prepare("drop table addresses_rtree").run();
+    } finally {
+      database.close();
+    }
+
+    await expect(reverseAddress(config, { radiusMeters: 20, voivodeshipCodes: ["14"], x: 637807, y: 486708 })).resolves.toMatchObject({
+      addresses: [{ buildingNumber: "12A", distanceMeters: 0 }],
+    });
+  });
+
   it("does not treat empty initialized address shards as installed data", async () => {
     const directory = await mkdtemp(join(tmpdir(), "prg-empty-address-shard-"));
     temporaryDirectories.push(directory);
