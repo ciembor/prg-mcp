@@ -16,7 +16,14 @@ export function createServerStatusTool(config: PrgConfig) {
     name: "server_status",
     output: z.object({
       dataDir: z.string(),
-      databases: z.array(z.object({ exists: z.boolean(), name: z.string(), sizeBytes: z.number().int() })),
+      databases: z.array(z.object({
+        canonicalMappingVersion: z.string().optional(),
+        exists: z.boolean(),
+        name: z.string(),
+        schemaStatus: z.enum(["current", "outdated", "newer", "unreadable"]).optional(),
+        schemaVersion: z.number().int().optional(),
+        sizeBytes: z.number().int(),
+      })),
       databaseSchemaVersion: z.number().int(),
       sqlite: z.object({ fts5: z.boolean(), rtree: z.boolean() }),
       totalSizeBytes: z.number().int(),

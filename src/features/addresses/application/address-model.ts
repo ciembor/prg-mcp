@@ -94,7 +94,7 @@ export type StreetWithGeometry = StreetSummary & {
 
 export class AddressToolError extends Error {
   public constructor(
-    public readonly code: "ADDRESS_NOT_FOUND" | "STREET_NOT_FOUND" | "INVALID_ADDRESS_ID" | "INVALID_STREET_ID" | "RADIUS_LIMIT_EXCEEDED" | "CANDIDATE_LIMIT_EXCEEDED",
+    public readonly code: "ADDRESS_NOT_FOUND" | "STREET_NOT_FOUND" | "INVALID_ADDRESS_ID" | "INVALID_STREET_ID" | "INVALID_INPUT" | "RADIUS_LIMIT_EXCEEDED" | "CANDIDATE_LIMIT_EXCEEDED",
     message: string,
   ) {
     super(message);
@@ -252,7 +252,12 @@ function decodeIdentifier(
   try {
     const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Partial<AddressIdentifier>;
 
-    if (!parsed.objectId || !parsed.voivodeshipCode || !prgVoivodeshipCodes.includes(parsed.voivodeshipCode)) {
+    if (
+      typeof parsed.objectId !== "string"
+      || parsed.objectId.length === 0
+      || typeof parsed.voivodeshipCode !== "string"
+      || !prgVoivodeshipCodes.includes(parsed.voivodeshipCode)
+    ) {
       throw new Error("Invalid identifier payload.");
     }
 

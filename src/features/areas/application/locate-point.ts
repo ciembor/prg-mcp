@@ -5,7 +5,7 @@ import { assertDataInstalled, databaseTableHasRows } from "../../../shared/data-
 import { decodeWkb } from "../../spatial/index.js";
 import { pointCoveredByPolygon } from "../../spatial/infrastructure/turf/geometry-predicates.js";
 import type { MultiPolygonGeometry, PolygonGeometry } from "../../spatial/index.js";
-import { listPrgLayers, type PrgLayerCategory } from "../../source-catalog/index.js";
+import { getPrgLayer, listPrgLayers, type PrgLayerCategory } from "../../source-catalog/index.js";
 import { AreaToolError, toAreaSummary, type AreaRow, type AreaSummary } from "./area-model.js";
 
 export type LocatePointInput = {
@@ -25,6 +25,7 @@ export type LocatePointResult = {
 };
 
 export async function locatePoint(config: PrgConfig, input: LocatePointInput): Promise<LocatePointResult> {
+  validateLocatePointInput(input);
   assertDataInstalled(
     databaseTableHasRows(config, "boundaries.sqlite", "areas"),
     "PRG boundary data is not installed.",
@@ -88,6 +89,22 @@ export async function locatePoint(config: PrgConfig, input: LocatePointInput): P
   }
 }
 
+function validateLocatePointInput(input: LocatePointInput): void {
+  if (!Number.isFinite(input.x) || !Number.isFinite(input.y)) {
+    throw new AreaToolError("INVALID_INPUT", "locate_point coordinates must be finite numbers.");
+  }
+
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
+    throw new AreaToolError("INVALID_INPUT", "locate_point limit must be a positive integer.");
+  }
+
+  if (input.maxCandidates !== undefined && (!Number.isInteger(input.maxCandidates) || input.maxCandidates < 1)) {
+    throw new AreaToolError("INVALID_INPUT", "locate_point maxCandidates must be a positive integer.");
+  }
+
+  validateAreaLayerIds("locate_point", input.layerIds);
+}
+
 function parameters(input: LocatePointInput): Record<string, unknown> {
   return {
     categoryLayerIdsCsv: layerIdsForCategory(input.category),
@@ -106,4 +123,13 @@ function layerIdsForCategory(category: PrgLayerCategory | undefined): string | n
     .map((layer) => layer.layerId);
 
   return layerIds.length === 0 ? "__none__" : layerIds.join(",");
+}
+
+function validateAreaLayerIds(toolName: string, layerIds: readonly string[] | undefined): void {
+  for (const layerId of layerIds ?? []) {
+    const layer = getPrgLayer(layerId);
+    if (!layer || layer.sourceChannel !== "wfs") {
+      throw new AreaToolError("INVALID_INPUT", `${toolName} layerIds must contain only PRG area layers.`);
+    }
+  }
 }

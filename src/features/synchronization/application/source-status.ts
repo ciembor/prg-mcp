@@ -8,14 +8,21 @@ export function isFresh(snapshot: SnapshotMetadata, now: Date, policy: Freshness
 export function classifySourceProbe(snapshot: SnapshotMetadata | undefined, probe: Omit<SourceProbe, "status">): SourceProbe {
   if (!snapshot) return { ...probe, status: "available" };
   if (probe.schemaFingerprint && probe.schemaFingerprint !== snapshot.schemaFingerprint) return { ...probe, status: "schema_changed" };
+  if (probe.stateDate && probe.stateDate !== snapshot.stateDate) return { ...probe, status: "changed" };
   if ((probe.etag && probe.etag !== snapshot.etag) || (probe.lastModified && probe.lastModified !== snapshot.lastModified)) {
     return { ...probe, status: "changed" };
   }
   return { ...probe, status: "available" };
 }
 
-export function shouldSynchronize(mode: "missing" | "stale" | "force", snapshot: SnapshotMetadata | undefined, probe?: SourceProbe): boolean {
+export function shouldSynchronize(
+  mode: "missing" | "stale" | "force",
+  snapshot: SnapshotMetadata | undefined,
+  probe?: SourceProbe,
+  now: Date = new Date(),
+  policy: FreshnessPolicy = defaultFreshnessPolicy,
+): boolean {
   if (mode === "force") return true;
   if (mode === "missing") return snapshot === undefined;
-  return snapshot === undefined || probe?.status === "changed";
+  return snapshot === undefined || probe?.status === "changed" || !isFresh(snapshot, now, policy);
 }

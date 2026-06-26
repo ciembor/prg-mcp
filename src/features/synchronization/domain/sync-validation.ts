@@ -4,6 +4,8 @@ export type SyncRecord = {
   readonly objectId: string;
   readonly crs: "EPSG:2180";
   readonly bbox: readonly [number, number, number, number];
+  readonly layerId?: string;
+  readonly datasetKey?: string;
   readonly municipalityCode?: string;
   readonly localityId?: string;
   readonly streetId?: string;
@@ -34,8 +36,9 @@ export function validateSyncDataset(context: SyncValidationContext): void {
   const streetIds = new Set(context.records.filter((record) => record.recordType === "street").map((record) => record.objectId));
 
   for (const record of context.records) {
-    if (ids.has(record.objectId)) throw validationError("Duplicate object identifier.", "DUPLICATE_ID", record);
-    ids.add(record.objectId);
+    const duplicateKey = syncRecordDuplicateKey(record, context);
+    if (ids.has(duplicateKey)) throw validationError("Duplicate object identifier.", "DUPLICATE_ID", record);
+    ids.add(duplicateKey);
     if (record.crs !== "EPSG:2180") throw validationError("Canonical record CRS must be EPSG:2180.", "INVALID_CRS", record);
     validateBbox(record);
     if (record.recordType === "address" && record.streetId && streetIds.size > 0 && !streetIds.has(record.streetId)) {
@@ -49,6 +52,19 @@ export function validateSyncDataset(context: SyncValidationContext): void {
       stagedCount: context.records.length,
     });
   }
+}
+
+function syncRecordDuplicateKey(record: SyncRecord, context: SyncValidationContext): string {
+  if (record.recordType === "area") {
+    return [
+      record.recordType,
+      record.datasetKey ?? context.target.datasetKey,
+      record.layerId ?? context.target.layer?.layerId ?? "unknown-layer",
+      record.objectId,
+    ].join(":");
+  }
+
+  return [record.recordType, record.objectId].join(":");
 }
 
 function validateBbox(record: SyncRecord): void {

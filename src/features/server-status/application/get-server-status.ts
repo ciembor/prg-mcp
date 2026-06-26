@@ -3,10 +3,17 @@ import { join } from "node:path";
 
 import Database from "better-sqlite3";
 
-import { prgDatabaseSchemaVersion, prgVoivodeshipCodes } from "../../persistence/index.js";
+import { prgCanonicalMappingVersion, prgDatabaseSchemaVersion, prgVoivodeshipCodes, readPrgDatabaseSchemaState } from "../../persistence/index.js";
 import type { PrgConfig } from "../../../runtime/config.js";
 
-export type DatabaseFileStatus = { readonly name: string; readonly exists: boolean; readonly sizeBytes: number };
+export type DatabaseFileStatus = {
+  readonly name: string;
+  readonly exists: boolean;
+  readonly sizeBytes: number;
+  readonly schemaVersion?: number;
+  readonly canonicalMappingVersion?: string;
+  readonly schemaStatus?: "current" | "outdated" | "newer" | "unreadable";
+};
 export type ServerStatus = {
   readonly transport: "stdio" | "http";
   readonly dataDir: string;
@@ -32,12 +39,38 @@ export async function getServerStatus(config: PrgConfig): Promise<ServerStatus> 
 
 async function fileStatus(dataDir: string, name: string): Promise<DatabaseFileStatus> {
   try {
-    const details = await stat(join(dataDir, name));
-    return { exists: details.isFile(), name, sizeBytes: details.isFile() ? details.size : 0 };
+    const path = join(dataDir, name);
+    const details = await stat(path);
+    const exists = details.isFile();
+    return {
+      exists,
+      name,
+      sizeBytes: exists ? details.size : 0,
+      ...(exists ? readSchemaStatus(path) : {}),
+    };
   } catch (error) {
     if (isNodeError(error, "ENOENT")) return { exists: false, name, sizeBytes: 0 };
     throw error;
   }
+}
+
+function readSchemaStatus(path: string): Pick<DatabaseFileStatus, "schemaVersion" | "canonicalMappingVersion" | "schemaStatus"> {
+  try {
+    const state = readPrgDatabaseSchemaState(path);
+    return {
+      canonicalMappingVersion: state.canonicalMappingVersion,
+      schemaStatus: schemaStatus(state.version, state.canonicalMappingVersion),
+      schemaVersion: state.version,
+    };
+  } catch {
+    return { schemaStatus: "unreadable" };
+  }
+}
+
+function schemaStatus(version: number, canonicalMappingVersion: string): NonNullable<DatabaseFileStatus["schemaStatus"]> {
+  if (version > prgDatabaseSchemaVersion) return "newer";
+  if (version < prgDatabaseSchemaVersion || canonicalMappingVersion !== prgCanonicalMappingVersion) return "outdated";
+  return "current";
 }
 
 function detectSqliteExtensions(): ServerStatus["sqlite"] {

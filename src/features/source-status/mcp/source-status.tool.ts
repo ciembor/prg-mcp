@@ -17,7 +17,7 @@ export function createSourceStatusTool(config: PrgConfig, probe?: SourceStatusPr
     output: z.object({
       checkedRemote: z.boolean(),
       coverage: z.array(z.object({
-        completeness: z.string(), layerId: z.string(), recordCount: z.number().int().optional(),
+        completeness: z.string(), datasetKey: z.string(), layerId: z.string(), recordCount: z.number().int().optional(),
         scopeCode: z.string(), scopeType: z.string(), stateDate: z.string().optional(),
       })),
       installedLayerCount: z.number().int(),

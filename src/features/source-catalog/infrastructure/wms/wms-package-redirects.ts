@@ -40,8 +40,8 @@ export function validatePrgPackageUrl(url: string): URL {
     throw new WmsPackageRedirectError("PRG package URL is not absolute.", "UNSUPPORTED_REDIRECT_URL", { url });
   }
 
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    throw new WmsPackageRedirectError("PRG package URL must use HTTP(S).", "UNSUPPORTED_REDIRECT_URL", { url });
+  if (parsed.protocol !== "https:") {
+    throw new WmsPackageRedirectError("PRG package URL must use HTTPS.", "UNSUPPORTED_REDIRECT_URL", { url });
   }
 
   if (!isAllowedPrgPackageHost(parsed.hostname)) {
@@ -77,7 +77,7 @@ export async function resolvePrgPackageRedirects(
   let currentUrl = validatePrgPackageUrl(startUrl).toString();
   const chain = [currentUrl];
 
-  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
+  for (let redirectCount = 0; redirectCount < maxRedirects; redirectCount += 1) {
     const response = await fetchRedirect(currentUrl, {
       method: "HEAD",
       redirect: "manual",

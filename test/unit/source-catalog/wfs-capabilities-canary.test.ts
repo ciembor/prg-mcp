@@ -15,7 +15,7 @@ const expectedCatalogSubset: readonly PrgLayer[] = [
   {
     layerId: "A00",
     sourceName: "A00_Granice_panstwa",
-    titlePl: "Granice państwa",
+    titlePl: "A00_Granice_panstwa",
     category: "administrative",
     geometryType: "polygon",
     sourceChannel: "wfs",
@@ -23,7 +23,7 @@ const expectedCatalogSubset: readonly PrgLayer[] = [
   {
     layerId: "W01",
     sourceName: "W01_Linia_podstawowa_morza_terytorialnego",
-    titlePl: "Linia podstawowa morza terytorialnego",
+    titlePl: "W01_Linia_podstawowa_morza_terytorialnego",
     category: "maritime",
     geometryType: "line",
     sourceChannel: "wfs",
@@ -83,7 +83,7 @@ describe("WFS capabilities canary", () => {
           },
         ],
       },
-      expectedCatalogSubset,
+      expectedCatalogSubset.map((layer) => (layer.layerId === "A00" ? { ...layer, titlePl: "Granice państwa" } : layer)),
     );
 
     expect(report).toEqual({
@@ -97,7 +97,7 @@ describe("WFS capabilities canary", () => {
           issues: [
             {
               kind: "title",
-              expected: "A00_Granice_panstwa",
+              expected: "Granice państwa",
               actual: "A00 boundary renamed",
             },
             {

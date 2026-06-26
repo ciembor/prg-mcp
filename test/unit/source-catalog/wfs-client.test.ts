@@ -151,7 +151,7 @@ describe("WFS 2.0 client", () => {
       },
     ]);
     expect(new URL(requestedUrls[0] ?? "").searchParams.get("STARTINDEX")).toBe("0");
-    expect(new URL(requestedUrls[1] ?? "").searchParams.get("STARTINDEX")).toBe("2");
+    expect(requestedUrls[1]).toBe("https://example.test/page-2");
   });
 
   it("continues WFS pagination without next links while numberMatched says more data exists", async () => {
@@ -250,6 +250,14 @@ function featureCollection(options: { readonly numberMatched: number | "unknown"
 }
 
 describe("WFS FeatureCollection page parser", () => {
+  it("parses single-quoted FeatureCollection attributes", () => {
+    expect(parseFeatureCollectionPage("<wfs:FeatureCollection numberMatched='unknown' numberReturned='0' next='https://example.test/n' />")).toEqual({
+      next: "https://example.test/n",
+      numberMatched: "unknown",
+      numberReturned: 0,
+    });
+  });
+
   it("rejects invalid page responses", () => {
     expect(() => parseFeatureCollectionPage("<xml />")).toThrow("WFS GetFeature response is missing FeatureCollection.");
   });

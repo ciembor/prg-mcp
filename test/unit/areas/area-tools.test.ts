@@ -36,6 +36,11 @@ describe("P5 area tools", () => {
     await expect(searchAreas(config, { code: "1408032", snapshotId: 2 })).resolves.toMatchObject({
       areas: [{ name: "Gmina Wieliszew 2025", snapshotId: 2 }],
     });
+    await expect(searchAreas(config, { code: "1408032", query: "nietrafiajacy tekst", snapshotId: 2 })).resolves.toMatchObject({
+      areas: [{ name: "Gmina Wieliszew 2025", snapshotId: 2 }],
+    });
+    await expect(searchAreas(config, { code: "Gmina Wieliszew", snapshotId: 1 })).resolves.toMatchObject({ areas: [] });
+    await expect(searchAreas(config, { category: "address", query: "Wieliszew", snapshotId: 1 })).resolves.toMatchObject({ areas: [] });
   });
 
   it("keeps golden area queries for administrative, court, prosecution, police, tax, forest and maritime layers", async () => {
@@ -96,6 +101,9 @@ describe("P5 area tools", () => {
     await expect(locatePoint(config, { category: "administrative", maxCandidates: 2, snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
       code: "COST_LIMIT_EXCEEDED",
     });
+    await expect(locatePoint(config, { layerIds: ["NOPE"], snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
   });
 
   it("relates bounded surfaces and lines and rejects unbounded scans at the MCP-schema level", async () => {
@@ -105,6 +113,8 @@ describe("P5 area tools", () => {
 
     expect(result.source.objectId).toBe("gmina-wieliszew");
     expect(result.matches.map((match) => [match.layerId, match.objectId])).toEqual([["W01", "linia-testowa"]]);
+    await expect(relateAreas(config, { areaId: gminaAreaId })).rejects.toMatchObject({ code: "UNBOUNDED_SCAN_REFUSED" });
+    await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A07"] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
   });
 
   async function createAreaFixture(): Promise<{ config: PrgConfig; gminaAreaId: string }> {

@@ -34,13 +34,14 @@ export function createDataResultMetadata(
   input: {
     readonly layerIds: readonly string[];
     readonly channels: readonly string[];
+    readonly fallbackCoverage?: readonly CoveragePair[];
     readonly fallbackScopes?: readonly string[];
     readonly requestedScopes?: readonly string[];
   },
 ): DataResultMetadata {
   const coverage = readInstalledCoverage(config, input.layerIds);
   const requestedScopes = input.requestedScopes && input.requestedScopes.length > 0 ? input.requestedScopes : undefined;
-  const coveragePairs = coverage.pairs.length > 0 ? coverage.pairs : fallbackCoveragePairs(input.layerIds, input.fallbackScopes ?? []);
+  const coveragePairs = coverage.pairs.length > 0 ? coverage.pairs : (input.fallbackCoverage ?? fallbackCoveragePairs(input.layerIds, input.fallbackScopes ?? []));
   const installedScopes = [...new Set(coveragePairs.map((pair) => pair.scope))].sort();
   const missingScopes = requestedScopes ? missingCoverageScopes(input.layerIds, requestedScopes, coveragePairs) : [];
 
@@ -76,8 +77,12 @@ export function databaseTableHasRows(config: PrgConfig, name: string, table: "ad
     } finally {
       database.close();
     }
-  } catch {
-    return false;
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return false;
+    }
+
+    throw error;
   }
 }
 
@@ -85,6 +90,10 @@ function tableHasRowsSql(table: "addresses" | "areas" | "streets"): string {
   if (table === "addresses") return "select 1 as present from addresses limit 1";
   if (table === "areas") return "select 1 as present from areas limit 1";
   return "select 1 as present from streets limit 1";
+}
+
+export function isMissingSqliteTableError(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "SQLITE_ERROR" && /no such table:/iu.test(error.message);
 }
 
 function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): { readonly pairs: readonly CoveragePair[]; readonly syncedAt: string | null } {
@@ -97,15 +106,16 @@ function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): 
   try {
     const layerIdSet = new Set(layerIds);
     const rows = (database.prepare(`
-      select c.layer_id as layerId, c.scope_type as scopeType, c.scope_code as scopeCode, s.downloaded_at as downloadedAt
+      select c.layer_id as layerId, c.scope_type as scopeType, c.scope_code as scopeCode, c.completeness as completeness, s.downloaded_at as downloadedAt
       from installed_coverage c join snapshots s on s.id = c.snapshot_id
       order by c.scope_type, c.scope_code, s.downloaded_at desc
     `).all() as Array<{
       layerId: string;
       scopeType: string;
       scopeCode: string;
+      completeness: string;
       downloadedAt: string;
-    }>).filter((row) => layerIdSet.has(row.layerId));
+    }>).filter((row) => layerIdSet.has(row.layerId) && row.completeness === "complete");
 
     return {
       pairs: rows.map((row) => ({ layerId: row.layerId, scope: `${row.scopeType}:${row.scopeCode}` })),

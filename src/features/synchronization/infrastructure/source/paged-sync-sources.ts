@@ -22,18 +22,18 @@ export function createPagedWfsSyncSource(options: PagedWfsSourceOptions): SyncSo
   return {
     probe: options.probe,
     download: async (target) => {
-      const records = new Map<string, SyncRecord>();
+      const records: SyncRecord[] = [];
       const chunks: Uint8Array[] = [];
       let expectedCount: number | "unknown" = "unknown";
       for await (const page of options.pages(target)) {
         chunks.push(page.bytes);
         expectedCount = page.numberMatched;
-        for (const record of page.records) records.set(record.objectId, record);
+        records.push(...page.records);
       }
-      if (expectedCount !== "unknown" && records.size !== expectedCount) {
-        throw new Error(`WFS coverage mismatch: expected ${expectedCount}, received ${records.size} unique records.`);
+      if (expectedCount !== "unknown" && records.length < expectedCount) {
+        throw new Error(`WFS coverage mismatch: expected ${expectedCount}, received ${records.length} records.`);
       }
-      return dataset([...records.values()], concatBytes(chunks), options);
+      return dataset(records, concatBytes(chunks), options);
     },
   };
 }

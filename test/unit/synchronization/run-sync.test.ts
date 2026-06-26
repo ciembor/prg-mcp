@@ -31,4 +31,32 @@ describe("synchronization orchestration", () => {
     expect(rollback).toHaveBeenCalledWith(expect.objectContaining({ id: "A01" }) satisfies Partial<StagedPublication>);
     expect(saved[0]?.sha256).toHaveLength(64);
   });
+
+  it("does not roll back a published database after catalog metadata is saved when finalize cleanup fails", async () => {
+    const plan = planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00"], mode: "force" });
+    const rollback = vi.fn(async () => undefined);
+    const saved: SnapshotMetadata[] = [];
+    const result = await runSyncPlan(plan, {
+      publisher: {
+        finalize: async () => { throw new Error("cleanup failed"); },
+        publish: async () => undefined,
+        rollback,
+        stage: async (target) => ({ id: target.layer.layerId, target }),
+      },
+      snapshots: { find: async () => undefined, save: async (metadata) => { saved.push(metadata); } },
+      source: {
+        probe: async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test", status: "available" }),
+        download: async (target) => ({
+          adapterVersion: "wfs-1", bytes: new Uint8Array([1]),
+          records: [{ bbox: [100_000, 100_000, 200_000, 200_000], crs: "EPSG:2180", objectId: target.layer.layerId, recordType: "area" }],
+          schemaFingerprint: "schema", sourceUrl: "https://example.test",
+        }),
+      },
+      now: () => new Date("2026-06-23T00:00:00.000Z"),
+    });
+
+    expect(result.targets).toEqual([expect.objectContaining({ error: "cleanup failed", status: "failed" })]);
+    expect(saved).toHaveLength(1);
+    expect(rollback).not.toHaveBeenCalled();
+  });
 });

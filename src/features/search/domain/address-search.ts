@@ -116,7 +116,27 @@ export function classifyTextMatch(
     return createTextMatch("contains", 0.75, normalizedQuery, normalizedCandidate);
   }
 
+  if (isOrderedTokenSubsequence(tokenize(normalizedQuery), tokenize(normalizedCandidate))) {
+    return createTextMatch("contains", 0.72, normalizedQuery, normalizedCandidate);
+  }
+
   return classifyFuzzyMatch(normalizedQuery, normalizedCandidate, thresholds);
+}
+
+export function classifyBestTextMatch(
+  query: string,
+  candidates: readonly string[],
+  thresholds: TextMatchThresholds = defaultTextMatchThresholds,
+): TextMatch {
+  return candidates
+    .map((candidate) => classifyTextMatch(query, candidate, thresholds))
+    .sort(compareTextMatches)[0] ?? createTextMatch("none", 0, normalizePolishSearchText(query), "");
+}
+
+export function removeOptionalStreetKind(text: string): string {
+  return tokenize(normalizePolishSearchText(text))
+    .filter((token) => !streetKindTokens.has(token))
+    .join(" ");
 }
 
 export function compareTextMatches(left: TextMatch, right: TextMatch): number {
@@ -164,6 +184,33 @@ function createTextMatch(
     normalizedCandidate,
     normalizedQuery,
   };
+}
+
+const streetKindTokens = new Set(["ulica", "aleja", "plac", "rondo", "osiedle"]);
+
+function tokenize(text: string): string[] {
+  return text.match(/[\p{L}\p{N}/]+/gu) ?? [];
+}
+
+function isOrderedTokenSubsequence(queryTokens: readonly string[], candidateTokens: readonly string[]): boolean {
+  if (queryTokens.length === 0 || candidateTokens.length === 0) {
+    return false;
+  }
+
+  let candidateIndex = 0;
+  for (const queryToken of queryTokens) {
+    while (candidateIndex < candidateTokens.length && candidateTokens[candidateIndex] !== queryToken) {
+      candidateIndex += 1;
+    }
+
+    if (candidateIndex === candidateTokens.length) {
+      return false;
+    }
+
+    candidateIndex += 1;
+  }
+
+  return true;
 }
 
 function textMatchModeWeight(mode: TextMatchMode): number {

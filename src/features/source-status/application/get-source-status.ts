@@ -9,6 +9,7 @@ import { listPrgLayers } from "../../source-catalog/index.js";
 export const operationalSourceStates = ["available", "changed", "unavailable", "schema_changed", "unknown"] as const;
 export type OperationalSourceState = (typeof operationalSourceStates)[number];
 export type CoverageStatus = {
+  readonly datasetKey: string;
   readonly layerId: string;
   readonly scopeType: string;
   readonly scopeCode: string;
@@ -52,12 +53,13 @@ async function readCoverage(catalogPath: string): Promise<readonly CoverageStatu
   const database = new Database(catalogPath, { fileMustExist: true, readonly: true });
   try {
     return (database.prepare(`
-      select c.layer_id as layerId, c.scope_type as scopeType, c.scope_code as scopeCode,
+      select s.dataset_key as datasetKey, c.layer_id as layerId, c.scope_type as scopeType, c.scope_code as scopeCode,
              c.completeness, s.state_date as stateDate, s.record_count as recordCount
       from installed_coverage c join snapshots s on s.id = c.snapshot_id
       order by c.layer_id, c.scope_type, c.scope_code
     `).all() as Array<CoverageStatus & { stateDate: string | null; recordCount: number | null }>).map((row) => ({
       completeness: row.completeness,
+      datasetKey: row.datasetKey,
       layerId: row.layerId,
       recordCount: row.recordCount ?? undefined,
       scopeCode: row.scopeCode,
@@ -70,7 +72,7 @@ async function readCoverage(catalogPath: string): Promise<readonly CoverageStatu
 }
 
 function localSourceStates(coverage: readonly CoverageStatus[]): SourceStatusResult["sources"] {
-  const keys = new Set(coverage.map((item) => item.layerId));
+  const keys = new Set(coverage.map((item) => item.datasetKey));
   return [...keys].sort().map((datasetKey) => ({ datasetKey, status: "unknown" as const }));
 }
 

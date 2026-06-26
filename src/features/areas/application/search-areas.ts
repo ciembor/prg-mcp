@@ -2,9 +2,9 @@ import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled, databaseTableHasRows } from "../../../shared/data-result.js";
-import { normalizeAreaSearchText, searchAreaNames } from "../../search/index.js";
+import { searchAreaNames } from "../../search/index.js";
 import { getPrgLayer, listPrgLayers, prgLayerCategories, type PrgLayerCategory } from "../../source-catalog/index.js";
-import { toAreaSummary, whereValidOnClause, type AreaRow, type AreaSummary } from "./area-model.js";
+import { AreaToolError, toAreaSummary, whereValidOnClause, type AreaRow, type AreaSummary } from "./area-model.js";
 
 export type SearchAreasInput = {
   readonly query?: string;
@@ -21,26 +21,25 @@ export type SearchAreasResult = {
 };
 
 export async function searchAreas(config: PrgConfig, input: SearchAreasInput): Promise<SearchAreasResult> {
+  validateSearchAreasInput(input);
   assertDataInstalled(
     databaseTableHasRows(config, "boundaries.sqlite", "areas"),
     "PRG boundary data is not installed.",
     "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
   );
 
-  if (input.layerId && !getPrgLayer(input.layerId)) {
+  if (input.layerId && !isAreaLayerId(input.layerId)) {
     return { areas: [] };
   }
 
-  if (input.category && !prgLayerCategories.includes(input.category)) {
+  if (input.category && !isAreaLayerCategory(input.category)) {
     return { areas: [] };
   }
 
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
 
   try {
-    const rows = input.query
-      ? searchByText(database, input)
-      : searchByFilters(database, input);
+    const rows = searchRows(database, input);
 
     return {
       areas: rows.map(toAreaSummary),
@@ -48,6 +47,19 @@ export async function searchAreas(config: PrgConfig, input: SearchAreasInput): P
   } finally {
     database.close();
   }
+}
+
+function searchRows(database: Database.Database, input: SearchAreasInput): AreaRow[] {
+  if (!input.query) {
+    return searchByFilters(database, input);
+  }
+
+  const textRows = searchByText(database, input);
+  if (!input.code) {
+    return textRows;
+  }
+
+  return mergeAreaRows(searchByFilters(database, { ...input, query: undefined }), textRows);
 }
 
 function searchByText(database: Database.Database, input: SearchAreasInput): AreaRow[] {
@@ -82,6 +94,22 @@ function searchByText(database: Database.Database, input: SearchAreasInput): Are
   return rows;
 }
 
+function mergeAreaRows(primary: readonly AreaRow[], secondary: readonly AreaRow[]): AreaRow[] {
+  const seen = new Set<number>();
+  const merged: AreaRow[] = [];
+
+  for (const row of [...primary, ...secondary]) {
+    if (seen.has(row.rowid)) {
+      continue;
+    }
+
+    seen.add(row.rowid);
+    merged.push(row);
+  }
+
+  return merged;
+}
+
 function searchByFilters(database: Database.Database, input: SearchAreasInput): AreaRow[] {
   if (!input.code && !input.layerId && !input.category) {
     return [];
@@ -104,7 +132,6 @@ function searchByFilters(database: Database.Database, input: SearchAreasInput): 
       code: input.code ?? null,
       layerId: input.layerId ?? null,
       limit: Math.min(input.limit ?? 20, 100),
-      normalizedCode: input.code ? normalizeAreaSearchText(input.code) : null,
       snapshotId: input.snapshotId ?? null,
       validOn: input.validOn ?? null,
     }) as AreaRow[];
@@ -115,7 +142,7 @@ function filtersSql(input: SearchAreasInput): string {
     and (@snapshotId is null or snapshot_id = @snapshotId)
     and (@layerId is null or layer_id = @layerId)
     ${categorySql(input.category)}
-    and (@code is null or lower(coalesce(code, '')) = lower(@code) or normalized_name = @normalizedCode)
+    and (@code is null or lower(coalesce(code, '')) = lower(@code))
     ${whereValidOnClause(input.validOn)}
   `;
 }
@@ -136,6 +163,22 @@ function categorySql(category: PrgLayerCategory | undefined): string {
 
 function layerIdsForCategory(category: PrgLayerCategory): string[] {
   return listPrgLayers()
-    .filter((layer) => layer.category === category)
+    .filter((layer) => layer.category === category && layer.sourceChannel === "wfs")
     .map((layer) => layer.layerId);
+}
+
+const areaLayerCategories = prgLayerCategories.filter((category) => category !== "address");
+
+function validateSearchAreasInput(input: SearchAreasInput): void {
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
+    throw new AreaToolError("INVALID_INPUT", "search_areas limit must be a positive integer.");
+  }
+}
+
+function isAreaLayerId(layerId: string): boolean {
+  return getPrgLayer(layerId)?.sourceChannel === "wfs";
+}
+
+function isAreaLayerCategory(category: PrgLayerCategory): boolean {
+  return (areaLayerCategories as readonly PrgLayerCategory[]).includes(category);
 }

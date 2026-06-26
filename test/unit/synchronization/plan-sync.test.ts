@@ -26,6 +26,9 @@ describe("PRG synchronization planner", () => {
     expect(() => planSync({ availableDiskBytes: 10 ** 12, mode: "missing", profile: "addresses", teryt: ["14xx"] })).toThrowError(
       expect.objectContaining({ code: "INVALID_TERYT" }),
     );
+    expect(() => planSync({ availableDiskBytes: 10 ** 12, mode: "missing", profile: "addresses", teryt: ["99"] })).toThrowError(
+      expect.objectContaining({ code: "INVALID_TERYT" }),
+    );
   });
 
   it("plans only catalogued immutable administrative archives", () => {

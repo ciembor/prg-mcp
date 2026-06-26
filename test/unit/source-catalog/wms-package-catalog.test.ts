@@ -124,6 +124,7 @@ describe("WMS PRG package redirect validation", () => {
     expect(isAllowedPrgPackageHost("gugik.gov.pl")).toBe(true);
     expect(isAllowedPrgPackageHost("evilgeoportal.gov.pl")).toBe(false);
     expect(() => validatePrgPackageUrl("https://evil.example/prg.zip")).toThrow(WmsPackageRedirectError);
+    expect(() => validatePrgPackageUrl(`http:${"//"}mapy.geoportal.gov.pl/prg.zip`)).toThrow(WmsPackageRedirectError);
     expect(validatePrgPackageUrl("https://mapy.geoportal.gov.pl/prg.zip").hostname).toBe("mapy.geoportal.gov.pl");
   });
 
@@ -160,6 +161,11 @@ describe("WMS PRG package redirect validation", () => {
       resolvePrgPackageRedirects("https://mapy.geoportal.gov.pl/download", async () => redirectResponse(302, "https://attacker.example/prg.zip")),
     ).rejects.toMatchObject({
       code: "UNTRUSTED_REDIRECT_HOST",
+    });
+    await expect(
+      resolvePrgPackageRedirects("https://mapy.geoportal.gov.pl/download", async () => redirectResponse(302, "https://mapy.geoportal.gov.pl/next"), 1),
+    ).rejects.toMatchObject({
+      code: "REDIRECT_LIMIT_EXCEEDED",
     });
   });
 });

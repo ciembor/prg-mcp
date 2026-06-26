@@ -4,6 +4,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
+import { isMissingSqliteTableError } from "../../../shared/data-result.js";
 import { prgVoivodeshipCodes } from "../../persistence/index.js";
 import { listPrgLayers, type PrgLayer, type PrgLayerCategory } from "../../source-catalog/index.js";
 
@@ -43,9 +44,9 @@ export async function listLayers(config: PrgConfig): Promise<readonly ListedLaye
 async function readCoverage(dataDir: string): Promise<ReadonlyMap<string, readonly string[]>> {
   const path = join(dataDir, "catalog.sqlite");
   if (!(await exists(path))) return new Map();
-  const rows = withReadonlyDatabase(path, (database) => database.prepare(
+  const rows = readSafely(() => withReadonlyDatabase(path, (database) => database.prepare(
     "select distinct layer_id as layerId, scope_type as scopeType, scope_code as scopeCode from installed_coverage order by layer_id, scope_type, scope_code",
-  ).all() as { layerId: string; scopeType: string; scopeCode: string }[]);
+  ).all() as { layerId: string; scopeType: string; scopeCode: string }[])) ?? [];
   const result = new Map<string, string[]>();
   for (const row of rows) result.set(row.layerId, [...(result.get(row.layerId) ?? []), `${row.scopeType}:${row.scopeCode}`]);
   return result;
@@ -55,9 +56,9 @@ async function readCounts(dataDir: string): Promise<ReadonlyMap<string, number>>
   const counts = new Map<string, number>();
   const boundariesPath = join(dataDir, "boundaries.sqlite");
   if (await exists(boundariesPath)) {
-    const rows = withReadonlyDatabase(boundariesPath, (database) => database.prepare(
+    const rows = readSafely(() => withReadonlyDatabase(boundariesPath, (database) => database.prepare(
       "select layer_id as layerId, count(*) as recordCount from areas group by layer_id",
-    ).all() as { layerId: string; recordCount: number }[]);
+    ).all() as { layerId: string; recordCount: number }[])) ?? [];
     for (const row of rows) counts.set(row.layerId, row.recordCount);
   }
   for (const code of prgVoivodeshipCodes) await addAddressShardCounts(counts, join(dataDir, `addresses-${code}.sqlite`));
@@ -67,8 +68,8 @@ async function readCounts(dataDir: string): Promise<ReadonlyMap<string, number>>
 async function addAddressShardCounts(counts: Map<string, number>, path: string): Promise<void> {
   if (!(await exists(path))) return;
   withReadonlyDatabase(path, (database) => {
-    add(counts, "A07", (database.prepare("select count(*) as count from addresses").get() as { count: number }).count);
-    add(counts, "A08", (database.prepare("select count(*) as count from streets").get() as { count: number }).count);
+    add(counts, "A07", readCountSafely(database, "addresses") ?? 0);
+    add(counts, "A08", readCountSafely(database, "streets") ?? 0);
   });
 }
 
@@ -77,6 +78,22 @@ function add(counts: Map<string, number>, layerId: string, value: number): void 
 function withReadonlyDatabase<T>(path: string, callback: (database: Database.Database) => T): T {
   const database = new Database(path, { fileMustExist: true, readonly: true });
   try { return callback(database); } finally { database.close(); }
+}
+
+function readCountSafely(database: Database.Database, table: "addresses" | "streets"): number | undefined {
+  return readSafely(() => (database.prepare(`select count(*) as count from ${table}`).get() as { count: number }).count);
+}
+
+function readSafely<T>(callback: () => T): T | undefined {
+  try {
+    return callback();
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return undefined;
+    }
+
+    throw error;
+  }
 }
 
 async function exists(path: string): Promise<boolean> {

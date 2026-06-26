@@ -1,4 +1,5 @@
 import { defineZodTool } from "@mcp-craftsman/zod";
+import Database from "better-sqlite3";
 import * as z from "zod";
 
 import type { PrgConfig } from "../../../runtime/config.js";
@@ -13,7 +14,9 @@ import { locatePoint } from "../application/locate-point.js";
 import { relateAreas } from "../application/relate-areas.js";
 import { searchAreas } from "../application/search-areas.js";
 
+const areaLayerCategories = prgLayerCategories.filter((category) => category !== "address");
 const categorySchema = z.enum(prgLayerCategories);
+const areaCategorySchema = z.enum(areaLayerCategories);
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const areaSummarySchema = z.object({
@@ -70,7 +73,7 @@ export function createSearchAreasTool(config: PrgConfig) {
       return { structuredContent: { areas: result.areas.map(toMutableAreaSummary), ...areaMetadata(config, input) } };
     },
     input: z.object({
-      category: categorySchema.optional(),
+      category: areaCategorySchema.optional(),
       code: z.string().min(1).optional(),
       layerId: z.string().min(1).optional(),
       limit: z.number().int().min(1).max(100).default(20),
@@ -136,7 +139,7 @@ export function createLocatePointTool(config: PrgConfig) {
       return { structuredContent: { matches: result.matches.map(toMutableAreaSummary), point: [...result.point] as [number, number], ...areaMetadata(config, input) } };
     },
     input: z.object({
-      category: categorySchema.optional(),
+      category: areaCategorySchema.optional(),
       layerIds: z.array(z.string().min(1)).max(54).optional(),
       limit: z.number().int().min(1).max(100).default(20),
       maxCandidates: z.number().int().min(1).max(10_000).default(2_000),
@@ -169,7 +172,7 @@ export function createRelateAreasTool(config: PrgConfig) {
     },
     input: z.object({
       areaId: z.string().min(1),
-      category: categorySchema.optional(),
+      category: areaCategorySchema.optional(),
       layerIds: z.array(z.string().min(1)).max(54).optional(),
       limit: z.number().int().min(1).max(100).default(20),
       maxCandidates: z.number().int().min(1).max(10_000).default(1_000),
@@ -194,17 +197,41 @@ function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; rea
   } else if (input.layerIds && input.layerIds.length > 0) {
     layerIds = input.layerIds;
   } else {
-    layerIds = listPrgLayers().filter((layer) => !input.category || layer.category === input.category).map((layer) => layer.layerId);
+    layerIds = listPrgLayers()
+      .filter((layer) => layer.sourceChannel === "wfs" && (!input.category || layer.category === input.category))
+      .map((layer) => layer.layerId);
   }
 
   const channels = layerIds.map((layerId) => getPrgLayer(layerId)?.sourceChannel ?? "wfs");
+  const fallbackCoverage = fallbackAreaCoverage(config, layerIds);
 
   return createDataResultMetadata(config, {
     channels,
-    fallbackScopes: databaseTableHasRows(config, "boundaries.sqlite", "areas") ? ["country:PL"] : [],
+    fallbackCoverage,
     layerIds,
     requestedScopes: ["country:PL"],
   });
+}
+
+function fallbackAreaCoverage(config: PrgConfig, layerIds: readonly string[]): Array<{ readonly layerId: string; readonly scope: string }> {
+  if (!databaseTableHasRows(config, "boundaries.sqlite", "areas")) {
+    return [];
+  }
+
+  const installedLayerIds = new Set(listInstalledAreaLayerIds(config));
+  return layerIds
+    .filter((layerId) => installedLayerIds.has(layerId))
+    .map((layerId) => ({ layerId, scope: "country:PL" }));
+}
+
+function listInstalledAreaLayerIds(config: PrgConfig): readonly string[] {
+  const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
+  try {
+    return (database.prepare("select distinct layer_id as layerId from areas order by layer_id").all() as Array<{ layerId: string }>)
+      .map((row) => row.layerId);
+  } finally {
+    database.close();
+  }
 }
 
 function toMutableAreaSummary(area: AreaSummary) {

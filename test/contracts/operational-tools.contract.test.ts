@@ -20,6 +20,11 @@ describe("operational MCP tools", () => {
     const server = await callTool(app, "server_status", {});
     expect(about.structuredContent).toMatchObject({ name: "prg-mcp", databaseSchemaVersion: 2 });
     expect(server.structuredContent).toMatchObject({ dataDir, sqlite: { fts5: true, rtree: true }, totalSizeBytes: 0 });
+    expect(server.structuredContent).toMatchObject({
+      databases: expect.arrayContaining([
+        expect.objectContaining({ exists: false, name: "catalog.sqlite" }),
+      ]),
+    });
   });
 
   it("returns a 54-layer catalog and an installed coverage matrix", async () => {
@@ -36,10 +41,21 @@ describe("operational MCP tools", () => {
     const app = createApp(testConfig(dataDir));
     const layers = (await callTool(app, "list_layers", {})).structuredContent as { layers: Array<{ layerId: string; available: boolean; usage: string }> };
     const status = (await callTool(app, "source_status", {})).structuredContent;
+    const server = (await callTool(app, "server_status", {})).structuredContent;
     expect(layers.layers).toHaveLength(54);
     expect(layers.layers.find((layer) => layer.layerId === "A00")).toMatchObject({ available: true });
     expect(layers.layers.every((layer) => layer.usage.length > 10)).toBe(true);
-    expect(status).toMatchObject({ installedLayerCount: 1, totalLayerCount: 54, coverage: [{ layerId: "A00", scopeCode: "PL" }] });
+    expect(status).toMatchObject({
+      installedLayerCount: 1,
+      totalLayerCount: 54,
+      coverage: [{ datasetKey: "current:A00", layerId: "A00", scopeCode: "PL" }],
+      sources: [{ datasetKey: "current:A00" }],
+    });
+    expect(server).toMatchObject({
+      databases: expect.arrayContaining([
+        expect.objectContaining({ canonicalMappingVersion: "2026-06-22", name: "catalog.sqlite", schemaStatus: "current", schemaVersion: 2 }),
+      ]),
+    });
   });
 
   it("does not expose sync_data until a real synchronization runner is wired", async () => {

@@ -1,4 +1,5 @@
 import { getPrgArchivalBoundaryPackage } from "../../source-catalog/domain/archival-boundary-catalog.js";
+import { prgVoivodeshipCodes } from "../../persistence/index.js";
 import { getPrgLayer, listPrgLayers } from "../../source-catalog/domain/prg-layer-catalog.js";
 import type { PrgLayer } from "../../source-catalog/domain/prg-layer.js";
 import {
@@ -74,7 +75,7 @@ function resolveScopes(values: readonly string[] | undefined, addressesSelected:
   if (!values || values.length === 0) return [{ type: "country", code: "PL" }];
   const scopes = [...new Set(values)].map(parseTerytScope);
   if (!addressesSelected && scopes.some((scope) => scope.type !== "country")) {
-    return [{ type: "country", code: "PL" }];
+    throw new SyncPlanningError("TERYT scopes are supported only for address-package layers.", "INVALID_TERYT", { scopes });
   }
   return scopes;
 }
@@ -82,6 +83,9 @@ function resolveScopes(values: readonly string[] | undefined, addressesSelected:
 function parseTerytScope(code: string): SyncScope {
   if (!/^\d{2}(?:\d{2}(?:\d{2}[1-5])?)?$/u.test(code)) {
     throw new SyncPlanningError(`Invalid TERYT scope: ${code}.`, "INVALID_TERYT", { code });
+  }
+  if (!prgVoivodeshipCodes.includes(code.slice(0, 2) as never)) {
+    throw new SyncPlanningError(`Invalid TERYT voivodeship code: ${code.slice(0, 2)}.`, "INVALID_TERYT", { code });
   }
   let type: SyncScope["type"] = "municipality";
   if (code.length === 2) type = "voivodeship";

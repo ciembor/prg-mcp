@@ -36,7 +36,8 @@ export function createSqliteSnapshotStore(catalogPath: string): SnapshotStore {
             state_date=excluded.state_date,
             downloaded_at=excluded.downloaded_at, checked_at=excluded.checked_at, etag=excluded.etag,
             last_modified=excluded.last_modified, sha256=excluded.sha256, record_count=excluded.record_count,
-            schema_fingerprint=excluded.schema_fingerprint, adapter_version=excluded.adapter_version, source_url=excluded.source_url
+            schema_fingerprint=excluded.schema_fingerprint, adapter_version=excluded.adapter_version, source_url=excluded.source_url,
+            archive_year=excluded.archive_year
         `).run({
           adapterVersion: metadata.adapterVersion,
           archiveYear: metadata.archiveYear ?? null,

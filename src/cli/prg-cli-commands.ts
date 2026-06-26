@@ -9,6 +9,7 @@ import { encodeAreaId } from "../features/areas/application/area-model.js";
 import { listLayers } from "../features/list-layers/index.js";
 import { getServerStatus } from "../features/server-status/index.js";
 import { getSourceStatus } from "../features/source-status/index.js";
+import { getPrgLayer } from "../features/source-catalog/index.js";
 import { planSync, syncProfiles, type SyncProfile } from "../features/synchronization/index.js";
 import { transform2180To4326, type PrgGeometry, type Position } from "../features/spatial/index.js";
 import type { PrgConfig } from "../runtime/config.js";
@@ -76,6 +77,11 @@ async function runExportCommand(config: PrgConfig, options: OptionMap) {
   const crs = option(options, "crs") ?? "EPSG:2180";
   if (format !== "geojson") throw new Error("export supports only --format geojson.");
   if (crs !== "EPSG:2180" && crs !== "EPSG:4326") throw new Error("export supports --crs EPSG:2180 or EPSG:4326.");
+  const layer = getPrgLayer(layerId);
+  if (!layer) throw new Error(`Unknown PRG layer: ${layerId}.`);
+  if (layer.sourceChannel !== "wfs" || layer.geometryType === "point") {
+    throw new Error(`export supports only PRG boundary and area geometry layers; ${layerId} is not exportable.`);
+  }
   const maxVertices = readIntegerOption(options, "max-vertices");
   if (maxVertices !== undefined && maxVertices < 4) throw new Error("--max-vertices must be at least 4.");
   const toleranceMeters = readNumberOption(options, "tolerance-meters");

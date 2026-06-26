@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, open, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
@@ -191,7 +192,7 @@ async function readImportLockFile(lockPath: string): Promise<PrgImportLockFile> 
 }
 
 function createTemporaryPath(targetPath: string): string {
-  return `${targetPath}.tmp-${process.pid}-${Date.now()}`;
+  return `${targetPath}.tmp-${process.pid}-${Date.now()}-${randomUUID()}`;
 }
 
 function isTemporaryImportFile(fileName: string): boolean {

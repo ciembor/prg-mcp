@@ -1,3 +1,4 @@
+import { packageName, packageVersion } from "../../../runtime/package-metadata.js";
 import { prgDatabaseSchemaVersion } from "../../persistence/index.js";
 
 export type AboutResult = {
@@ -14,8 +15,8 @@ export function getAbout(): AboutResult {
     author: { email: "maciej.ciemborowicz@gmail.com", name: "Maciej Ciemborowicz" },
     databaseSchemaVersion: prgDatabaseSchemaVersion,
     description: "Local-first MCP server for all 54 layers of Poland's official National Register of Boundaries (PRG).",
-    name: "prg-mcp",
+    name: packageName,
     repository: "https://github.com/ciembor/prg-mcp",
-    version: "0.1.0",
+    version: packageVersion,
   };
 }

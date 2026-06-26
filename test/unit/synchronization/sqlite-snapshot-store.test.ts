@@ -30,14 +30,14 @@ describe("SQLite snapshot metadata", () => {
       layer,
       scope: { code: "PL", type: "country" },
     });
-    await store.save({ ...metadata, checkedAt: "2026-06-24T00:00:00.000Z", etag: "two" }, {
+    await store.save({ ...metadata, archiveYear: 2024, checkedAt: "2026-06-24T00:00:00.000Z", etag: "two" }, {
       datasetKey: metadata.datasetKey,
       estimatedDiskBytes: 1,
       estimatedDownloadBytes: 1,
       layer,
       scope: { code: "PL", type: "country" },
     });
-    expect(await store.find(metadata.datasetKey, metadata.scope)).toEqual({ ...metadata, checkedAt: "2026-06-24T00:00:00.000Z", etag: "two" });
+    expect(await store.find(metadata.datasetKey, metadata.scope)).toEqual({ ...metadata, archiveYear: 2024, checkedAt: "2026-06-24T00:00:00.000Z", etag: "two" });
 
     const database = new Database(catalogPath, { readonly: true });
     try {

@@ -24,12 +24,12 @@ export function checkWfsCapabilitiesCanary(
     }
 
     const issues: WfsCanaryLayerChange["issues"] = [
-      ...(actual.title === layer.sourceName
+      ...(actual.title === layer.titlePl
         ? []
         : [
             {
               kind: "title" as const,
-              expected: layer.sourceName,
+              expected: layer.titlePl,
               actual: actual.title,
             },
           ]),

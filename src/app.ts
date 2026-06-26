@@ -3,14 +3,15 @@ import { loadRuntimeConfig } from "@mcp-craftsman/node";
 
 import { createRegistry, type RegistryServices } from "./mcp/registry.js";
 import { loadPrgConfig, type PrgConfig } from "./runtime/config.js";
+import { packageName, packageVersion } from "./runtime/package-metadata.js";
 
 export function createApp(
   config: PrgConfig = loadPrgConfig(loadRuntimeConfig({ appName: "prg-mcp" })),
   services: RegistryServices = {},
 ) {
   const app = createMcpApp({
-    name: "prg-mcp",
-    version: "0.1.0",
+    name: packageName,
+    version: packageVersion,
     registry: createRegistry(config, services),
   });
 

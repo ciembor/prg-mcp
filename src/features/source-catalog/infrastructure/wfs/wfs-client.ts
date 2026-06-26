@@ -1,3 +1,6 @@
+import { SaxesParser } from "saxes";
+
+import { packageUserAgent } from "../../../../runtime/package-metadata.js";
 import { parseWfsCapabilities } from "./parse-wfs-capabilities.js";
 import type { WfsCapabilities } from "../../domain/wfs-capabilities.js";
 
@@ -92,7 +95,7 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
     ...defaultRetryOptions,
     ...options.retry,
   };
-  const userAgent = options.userAgent ?? "prg-mcp/0.1.0";
+  const userAgent = options.userAgent ?? packageUserAgent;
 
   async function requestXml(url: string): Promise<string> {
     for (let attempt = 0; attempt <= retry.retries; attempt += 1) {
@@ -122,6 +125,16 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
     throw new WfsClientError("WFS request failed.", "SOURCE_UNAVAILABLE", { url });
   }
 
+  async function getFeaturePageFromUrl(url: string): Promise<WfsFeaturePage> {
+    const xml = await requestXml(url);
+
+    return {
+      url,
+      xml,
+      ...parseFeatureCollectionPage(xml),
+    };
+  }
+
   return {
     getCapabilities: async () => {
       const xml = await requestXml(buildWfsUrl(options.endpoint, {
@@ -137,25 +150,21 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
         OUTPUTFORMAT: outputFormat,
       })),
     getFeaturePage: async (request) => {
-      const url = buildGetFeatureUrl(options.endpoint, request);
-      const xml = await requestXml(url);
-
-      return {
-        url,
-        xml,
-        ...parseFeatureCollectionPage(xml),
-      };
+      return getFeaturePageFromUrl(buildGetFeatureUrl(options.endpoint, request));
     },
     getFeaturePages: async function* getFeaturePages(request) {
       const pageSize = request.count;
       let startIndex = request.startIndex ?? 0;
+      let nextUrl: string | undefined;
 
       while (true) {
-        const page = await this.getFeaturePage({
-          ...request,
-          count: pageSize,
-          startIndex,
-        });
+        const page = nextUrl
+          ? await getFeaturePageFromUrl(nextUrl)
+          : await this.getFeaturePage({
+            ...request,
+            count: pageSize,
+            startIndex,
+          });
 
         yield page;
 
@@ -164,6 +173,7 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
         }
 
         startIndex += page.numberReturned;
+        nextUrl = page.next;
       }
     },
   };
@@ -201,7 +211,7 @@ export function toWfsCrsName(crs: WfsSupportedCrs): string {
 }
 
 export function parseFeatureCollectionPage(xml: string): Omit<WfsFeaturePage, "url" | "xml"> {
-  const collectionStart = findFeatureCollectionStartTag(xml);
+  const collectionStart = readFeatureCollectionAttributes(xml);
 
   if (!collectionStart) {
     throw new Error("WFS GetFeature response is missing FeatureCollection.");
@@ -210,25 +220,23 @@ export function parseFeatureCollectionPage(xml: string): Omit<WfsFeaturePage, "u
   return {
     numberMatched: parseWfsNumberAttribute(collectionStart, "numberMatched"),
     numberReturned: parseRequiredNumericAttribute(collectionStart, "numberReturned"),
-    next: parseOptionalAttribute(collectionStart, "next"),
+    next: getAttributeValue(collectionStart, "next"),
   };
 }
 
-function findFeatureCollectionStartTag(xml: string): string | undefined {
-  const nameIndex = xml.indexOf("FeatureCollection");
+function readFeatureCollectionAttributes(xml: string): Record<string, unknown> | undefined {
+  const parser = new SaxesParser({ xmlns: false });
+  let attributes: Record<string, unknown> | undefined;
 
-  if (nameIndex === -1) {
-    return undefined;
-  }
+  parser.on("opentag", (tag) => {
+    if (!attributes && getXmlLocalName(tag.name) === "FeatureCollection") {
+      attributes = tag.attributes;
+    }
+  });
 
-  const tagStart = xml.lastIndexOf("<", nameIndex);
-  const tagEnd = xml.indexOf(">", nameIndex);
+  parser.write(xml).close();
 
-  if (tagStart === -1 || tagEnd === -1 || xml[tagStart + 1] === "/") {
-    return undefined;
-  }
-
-  return xml.slice(tagStart, tagEnd + 1);
+  return attributes;
 }
 
 function buildWfsUrl(endpoint: string, params: Readonly<Record<string, string>>): string {
@@ -295,8 +303,8 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
-function parseWfsNumberAttribute(source: string, attributeName: string): number | "unknown" {
-  const value = parseOptionalAttribute(source, attributeName);
+function parseWfsNumberAttribute(source: Record<string, unknown>, attributeName: string): number | "unknown" {
+  const value = getAttributeValue(source, attributeName);
 
   if (!value || value === "unknown") {
     return "unknown";
@@ -305,8 +313,8 @@ function parseWfsNumberAttribute(source: string, attributeName: string): number 
   return parseWfsNonNegativeInteger(value, attributeName);
 }
 
-function parseRequiredNumericAttribute(source: string, attributeName: string): number {
-  const value = parseOptionalAttribute(source, attributeName);
+function parseRequiredNumericAttribute(source: Record<string, unknown>, attributeName: string): number {
+  const value = getAttributeValue(source, attributeName);
 
   if (!value) {
     throw new Error(`WFS FeatureCollection is missing ${attributeName}.`);
@@ -329,6 +337,14 @@ function parseWfsNonNegativeInteger(value: string, attributeName: string): numbe
   return parsed;
 }
 
-function parseOptionalAttribute(source: string, attributeName: string): string | undefined {
-  return source.match(new RegExp(`\\b${attributeName}="([^"]*)"`, "u"))?.[1];
+function getAttributeValue(attributes: Record<string, unknown>, attributeName: string): string | undefined {
+  const value = attributes[attributeName];
+
+  return typeof value === "string" ? value : undefined;
+}
+
+function getXmlLocalName(name: string): string {
+  const separatorIndex = name.indexOf(":");
+
+  return separatorIndex === -1 ? name : name.slice(separatorIndex + 1);
 }

@@ -61,11 +61,12 @@ type SyncDependencies = { readonly source: SyncSource; readonly publisher: SyncP
 async function synchronizeTarget(plan: SyncPlan, target: SyncTarget, dependencies: SyncDependencies): Promise<SyncTargetResult> {
   const scope = `${target.scope.type}:${target.scope.code}`;
   let staged: StagedPublication | undefined;
+  let catalogSaved = false;
   try {
     const previous = await dependencies.snapshots.find(target.datasetKey, scope);
     const conditional = previous && !target.archiveYear ? { etag: previous.etag, lastModified: previous.lastModified } : undefined;
     const probe = target.archiveYear ? undefined : await dependencies.source.probe(target, conditional);
-    assertProbeUsable(probe);
+    assertProbeUsable(plan.mode, probe);
     if (isUnchangedArchive(target, previous) || !shouldSynchronize(plan.mode, previous, probe)) {
       return { datasetKey: target.datasetKey, scope, status: "unchanged" };
     }
@@ -75,10 +76,11 @@ async function synchronizeTarget(plan: SyncPlan, target: SyncTarget, dependencie
     staged = await dependencies.publisher.stage(target, dataset, metadata);
     await dependencies.publisher.publish(staged);
     await dependencies.snapshots.save(metadata, target);
+    catalogSaved = true;
     await dependencies.publisher.finalize?.(staged);
     return { datasetKey: target.datasetKey, scope, status: "published", recordCount: dataset.records.length };
   } catch (error) {
-    if (staged) await dependencies.publisher.rollback(staged);
+    if (staged && !catalogSaved) await dependencies.publisher.rollback(staged);
     return { datasetKey: target.datasetKey, scope, status: "failed", error: errorMessage(error) };
   }
 }
@@ -97,8 +99,9 @@ function isUnchangedArchive(target: SyncTarget, previous: SnapshotMetadata | und
   return target.archiveYear !== undefined && previous !== undefined;
 }
 
-function assertProbeUsable(probe: SourceProbe | undefined): void {
+function assertProbeUsable(mode: SyncPlan["mode"], probe: SourceProbe | undefined): void {
   if (!probe || probe.status === "available" || probe.status === "changed") return;
+  if (mode === "force" && probe.status === "schema_changed") return;
   throw new Error(`Source status prevents synchronization: ${probe.status}.`);
 }
 

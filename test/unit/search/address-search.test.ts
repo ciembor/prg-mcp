@@ -95,6 +95,7 @@ describe("address and street search", () => {
   it("searches street FTS and normalizes street abbreviations", async () => {
     const database = await createAddressDatabase();
     insertStreet(database);
+    insertStreetWithoutKind(database);
     rebuildStreetSearchIndex(database);
 
     const results = searchStreets(database, {
@@ -110,6 +111,15 @@ describe("address and street search", () => {
         mode: "exact",
       },
     });
+    expect(searchStreets(database, { query: "ul. Bracka", limit: 5 })).toMatchObject([
+      {
+        name: "Bracka",
+        objectId: "ul-2",
+        match: {
+          mode: "exact",
+        },
+      },
+    ]);
     expectTypeOf<StreetSearchResult>().toEqualTypeOf<(typeof results)[number]>();
     database.close();
   });
@@ -172,6 +182,34 @@ function insertStreet(database: Database.Database): void {
         'ul-1',
         'Żurawia',
         'ulica zurawia',
+        0,
+        0,
+        1,
+        1,
+        x'00'
+      )
+    `)
+    .run();
+}
+
+function insertStreetWithoutKind(database: Database.Database): void {
+  database
+    .prepare(`
+      insert into streets (
+        rowid,
+        object_id,
+        name,
+        normalized_name,
+        min_x,
+        min_y,
+        max_x,
+        max_y,
+        geometry_wkb
+      ) values (
+        2,
+        'ul-2',
+        'Bracka',
+        'bracka',
         0,
         0,
         1,

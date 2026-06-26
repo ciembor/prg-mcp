@@ -11,6 +11,7 @@ import {
   type PrgDatabaseSchemaState,
   type PrgVoivodeshipCode,
 } from "../../domain/database-schema.js";
+import { packageVersion } from "../../../../runtime/package-metadata.js";
 
 export type InitializePrgDatabaseOptions = {
   readonly dataDir: string;
@@ -34,7 +35,7 @@ export function initializePrgDatabases(options: InitializePrgDatabaseOptions): I
     shardCodes.map((voivodeshipCode) => [voivodeshipCode, join(options.dataDir, `addresses-${voivodeshipCode}.sqlite`)]),
   ) as Record<PrgVoivodeshipCode, string>;
 
-  withDatabase(catalogPath, (database) => migrateCatalogDatabase(database, options.appVersion ?? "0.1.0"));
+  withDatabase(catalogPath, (database) => migrateCatalogDatabase(database, options.appVersion ?? packageVersion));
   withDatabase(boundariesPath, migrateBoundariesDatabase);
 
   for (const shardPath of Object.values(addressShardPaths)) {
@@ -290,7 +291,7 @@ function migrateAddressShardDatabase(database: Database.Database): void {
   })();
 }
 
-function createSchemaMetadata(database: Database.Database, kind: PrgDatabaseKind, appVersion = "0.1.0"): void {
+function createSchemaMetadata(database: Database.Database, kind: PrgDatabaseKind, appVersion = packageVersion): void {
   database.exec(`
     create table if not exists schema_metadata (
       version integer not null,

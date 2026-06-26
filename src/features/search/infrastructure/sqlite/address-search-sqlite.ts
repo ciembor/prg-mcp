@@ -1,9 +1,10 @@
 import type Database from "better-sqlite3";
 
 import {
-  classifyTextMatch,
+  classifyBestTextMatch,
   compareTextMatches,
   normalizePolishSearchText,
+  removeOptionalStreetKind,
   toPolishFtsQuery,
   type AddressSearchDocument,
   type AddressSearchOptions,
@@ -69,18 +70,17 @@ export function searchAddresses(database: Database.Database, options: AddressSea
     return [];
   }
 
-  const rows = database
-    .prepare(addressSearchSql)
-    .all({
-      ftsQuery,
-      limit: (options.limit ?? 20) * 5,
-    }) as AddressSqlRow[];
+  const limit = options.limit ?? 20;
+  const rows = collectMatchingRows<AddressSqlRow, AddressSearchResult>(
+    (candidateLimit) => database.prepare(addressSearchSql).all({ ftsQuery, limit: candidateLimit }) as AddressSqlRow[],
+    (row) => toAddressSearchResult(row, options.query),
+    limit,
+  );
 
   return rows
     .map((row) => toAddressSearchResult(row, options.query))
-    .filter((result) => result.match.mode !== "none")
     .sort(compareAddressResults)
-    .slice(0, options.limit ?? 20);
+    .slice(0, limit);
 }
 
 export function searchStreets(database: Database.Database, options: AddressSearchOptions): StreetSearchResult[] {
@@ -90,18 +90,69 @@ export function searchStreets(database: Database.Database, options: AddressSearc
     return [];
   }
 
-  const rows = database
-    .prepare(streetSearchSql)
-    .all({
-      ftsQuery,
-      limit: (options.limit ?? 20) * 5,
-    }) as StreetSqlRow[];
+  const limit = options.limit ?? 20;
+  const rows = collectStreetRows(database, options.query, limit);
 
   return rows
     .map((row) => toStreetSearchResult(row, options.query))
-    .filter((result) => result.match.mode !== "none")
     .sort(compareStreetResults)
-    .slice(0, options.limit ?? 20);
+    .slice(0, limit);
+}
+
+function collectStreetRows(database: Database.Database, query: string, limit: number): StreetSqlRow[] {
+  const rowsByObjectId = new Map<string, StreetSqlRow>();
+
+  for (const ftsQuery of streetFtsQueries(query)) {
+    const rows = collectMatchingRows<StreetSqlRow, StreetSearchResult>(
+      (candidateLimit) => database.prepare(streetSearchSql).all({ ftsQuery, limit: candidateLimit }) as StreetSqlRow[],
+      (row) => toStreetSearchResult(row, query),
+      limit,
+    );
+
+    for (const row of rows) {
+      rowsByObjectId.set(row.object_id, bestStreetRow(rowsByObjectId.get(row.object_id), row));
+    }
+  }
+
+  return [...rowsByObjectId.values()];
+}
+
+function collectMatchingRows<Row, Result extends { readonly match: { readonly mode: string } }>(
+  fetchRows: (candidateLimit: number) => Row[],
+  toResult: (row: Row) => Result,
+  limit: number,
+): Row[] {
+  let candidateLimit = Math.max(limit * 5, limit);
+  const maximumCandidateLimit = Math.max(limit * 100, candidateLimit);
+  let lastRows: Row[] = [];
+
+  while (candidateLimit <= maximumCandidateLimit) {
+    const rows = fetchRows(candidateLimit);
+    const matchingRows = rows.filter((row) => toResult(row).match.mode !== "none");
+    lastRows = matchingRows;
+
+    if (matchingRows.length >= limit || rows.length < candidateLimit) {
+      return matchingRows;
+    }
+
+    candidateLimit *= 2;
+  }
+
+  return lastRows;
+}
+
+function streetFtsQueries(query: string): readonly string[] {
+  const queries = [toPolishFtsQuery(query), toPolishFtsQuery(removeOptionalStreetKind(query))].filter((value): value is string => Boolean(value));
+
+  return [...new Set(queries)];
+}
+
+function bestStreetRow(existing: StreetSqlRow | undefined, candidate: StreetSqlRow): StreetSqlRow {
+  if (!existing || candidate.bm25_score < existing.bm25_score) {
+    return candidate;
+  }
+
+  return existing;
 }
 
 const addressSearchSql = `
@@ -145,7 +196,7 @@ function toAddressSearchResult(row: AddressSqlRow, query: string): AddressSearch
     bm25: row.bm25_score,
     buildingNumber: row.building_number,
     localityName: row.locality_name,
-    match: classifyTextMatch(query, formatAddressCandidate(row)),
+    match: classifyBestTextMatch(query, addressMatchCandidates(row)),
     objectId: row.object_id,
     postalCode: row.postal_code,
     rowid: row.rowid,
@@ -156,12 +207,18 @@ function toAddressSearchResult(row: AddressSqlRow, query: string): AddressSearch
 function toStreetSearchResult(row: StreetSqlRow, query: string): StreetSearchResult {
   return {
     bm25: row.bm25_score,
-    match: classifyTextMatch(query, row.normalized_name),
+    match: classifyBestTextMatch(removeOptionalStreetKind(query), [row.normalized_name, removeOptionalStreetKind(row.normalized_name)]),
     name: row.name,
     normalizedName: row.normalized_name,
     objectId: row.object_id,
     rowid: row.rowid,
   };
+}
+
+function addressMatchCandidates(row: AddressSqlRow): readonly string[] {
+  const formatted = formatAddressCandidate(row);
+  const withoutStreetKind = removeOptionalStreetKind(formatted);
+  return withoutStreetKind === normalizePolishSearchText(formatted) ? [formatted] : [formatted, withoutStreetKind];
 }
 
 function formatAddressCandidate(row: AddressSqlRow): string {

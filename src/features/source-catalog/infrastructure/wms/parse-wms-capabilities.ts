@@ -23,8 +23,10 @@ export function parseWmsCapabilities(xml: string): WmsCapabilities {
     textBuffer = "";
 
     if (localName === "Layer") {
+      const inheritedQueryable = layerStack.at(-1)?.queryable ?? false;
+      const queryableAttribute = getAttributeValue(tag.attributes, "queryable");
       layerStack.push({
-        queryable: getAttributeValue(tag.attributes, "queryable") === "1",
+        queryable: queryableAttribute === undefined ? inheritedQueryable : queryableAttribute === "1",
       });
     }
   });

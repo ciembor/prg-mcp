@@ -19,20 +19,33 @@ export async function getAreaGeometry(
   config: PrgConfig,
   input: { readonly areaId: string; readonly toleranceMeters?: number; readonly maxVertices?: number },
 ): Promise<AreaGeometryResult> {
+  validateGetAreaGeometryInput(input);
   const area = await getAreaWithGeometry(config, input.areaId);
   const maxVertices = Math.min(input.maxVertices ?? 10_000, 100_000);
   const tolerance = input.toleranceMeters ?? 0;
   const geometry = simplifyToLimit(area.geometry, tolerance, maxVertices);
+  const originalVertexCount = vertexCount(area.geometry);
+  const finalVertexCount = vertexCount(geometry);
 
   return {
     areaId: area.areaId,
     crs: "EPSG:2180",
     geometry,
     layerId: area.layerId,
-    simplified: vertexCount(area.geometry) !== vertexCount(geometry),
+    simplified: tolerance > 0 || originalVertexCount !== finalVertexCount,
     snapshotId: area.snapshotId,
-    vertexCount: vertexCount(geometry),
+    vertexCount: finalVertexCount,
   };
+}
+
+function validateGetAreaGeometryInput(input: { readonly toleranceMeters?: number; readonly maxVertices?: number }): void {
+  if (input.maxVertices !== undefined && (!Number.isInteger(input.maxVertices) || input.maxVertices < 4)) {
+    throw new AreaToolError("INVALID_INPUT", "get_area_geometry maxVertices must be an integer of at least 4.");
+  }
+
+  if (input.toleranceMeters !== undefined && (!Number.isFinite(input.toleranceMeters) || input.toleranceMeters < 0)) {
+    throw new AreaToolError("INVALID_INPUT", "get_area_geometry toleranceMeters must be at least 0.");
+  }
 }
 
 export function vertexCount(geometry: PrgGeometry): number {

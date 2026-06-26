@@ -7,7 +7,7 @@ const record = (objectId: string, municipalityCode?: string): SyncRecord => ({
 });
 
 describe("paged synchronization sources", () => {
-  it("deduplicates overlapping WFS pages and validates numberMatched", async () => {
+  it("preserves overlapping WFS page records so validation can detect duplicates", async () => {
     const source = createPagedWfsSyncSource({
       adapterVersion: "1", schemaFingerprint: "schema", sourceUrl: "https://example.test/wfs",
       probe: async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test/wfs", status: "available" }),
@@ -17,7 +17,7 @@ describe("paged synchronization sources", () => {
       },
     });
     const downloaded = await source.download({} as never);
-    expect(downloaded.records.map(({ objectId }) => objectId)).toEqual(["a", "b"]);
+    expect(downloaded.records.map(({ objectId }) => objectId)).toEqual(["a", "b", "b"]);
     expect(downloaded.bytes).toEqual(new Uint8Array([1, 2]));
   });
 

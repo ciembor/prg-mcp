@@ -155,11 +155,11 @@ function dataResultToolInputs(areaId: string, addressId: string, streetId: strin
     get_area: inputs.get_area,
     get_area_geometry: inputs.get_area_geometry,
     get_street: inputs.get_street,
-    locate_point: inputs.locate_point,
-    relate_areas: inputs.relate_areas,
+    locate_point: { layerIds: ["A03"], x: 5, y: 5 },
+    relate_areas: { areaId, layerIds: ["A03"] },
     reverse_address: inputs.reverse_address,
     search_addresses: inputs.search_addresses,
-    search_areas: inputs.search_areas,
+    search_areas: { layerId: "A03", query: "Wieliszew" },
     search_streets: inputs.search_streets,
   };
 }

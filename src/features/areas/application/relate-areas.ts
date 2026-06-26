@@ -4,7 +4,7 @@ import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled, databaseTableHasRows } from "../../../shared/data-result.js";
 import { decodeWkb } from "../../spatial/index.js";
 import { geometriesIntersect } from "../../spatial/infrastructure/turf/geometry-predicates.js";
-import { listPrgLayers, type PrgLayerCategory } from "../../source-catalog/index.js";
+import { getPrgLayer, listPrgLayers, type PrgLayerCategory } from "../../source-catalog/index.js";
 import { AreaToolError, readAreaById, toAreaSummary, type AreaRow, type AreaSummary } from "./area-model.js";
 
 export type RelateAreasInput = {
@@ -24,6 +24,7 @@ export type RelateAreasResult = {
 };
 
 export async function relateAreas(config: PrgConfig, input: RelateAreasInput): Promise<RelateAreasResult> {
+  validateRelateAreasInput(input);
   assertDataInstalled(
     databaseTableHasRows(config, "boundaries.sqlite", "areas"),
     "PRG boundary data is not installed.",
@@ -33,6 +34,12 @@ export async function relateAreas(config: PrgConfig, input: RelateAreasInput): P
 
   try {
     const sourceRow = readAreaById(database, input.areaId);
+    if (input.snapshotId !== undefined && input.snapshotId !== sourceRow.snapshot_id) {
+      throw new AreaToolError(
+        "SNAPSHOT_MISMATCH",
+        `relate_areas snapshotId ${input.snapshotId} does not match source area snapshot ${sourceRow.snapshot_id}.`,
+      );
+    }
     const maxCandidates = Math.min(input.maxCandidates ?? 1_000, 10_000);
     const count = database
       .prepare(`
@@ -91,6 +98,22 @@ export async function relateAreas(config: PrgConfig, input: RelateAreasInput): P
   }
 }
 
+function validateRelateAreasInput(input: RelateAreasInput): void {
+  if (!input.category && (!input.layerIds || input.layerIds.length === 0)) {
+    throw new AreaToolError("UNBOUNDED_SCAN_REFUSED", "relate_areas requires layerIds or category to avoid an unbounded relation scan.");
+  }
+
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
+    throw new AreaToolError("INVALID_INPUT", "relate_areas limit must be a positive integer.");
+  }
+
+  if (input.maxCandidates !== undefined && (!Number.isInteger(input.maxCandidates) || input.maxCandidates < 1)) {
+    throw new AreaToolError("INVALID_INPUT", "relate_areas maxCandidates must be a positive integer.");
+  }
+
+  validateAreaLayerIds("relate_areas", input.layerIds);
+}
+
 function parameters(sourceRow: AreaRow, input: RelateAreasInput): Record<string, unknown> {
   return {
     categoryLayerIdsCsv: layerIdsForCategory(input.category),
@@ -121,4 +144,13 @@ function layerIdsForCategory(category: PrgLayerCategory | undefined): string | n
   }
 
   return layerIds.join(",");
+}
+
+function validateAreaLayerIds(toolName: string, layerIds: readonly string[] | undefined): void {
+  for (const layerId of layerIds ?? []) {
+    const layer = getPrgLayer(layerId);
+    if (!layer || layer.sourceChannel !== "wfs") {
+      throw new AreaToolError("INVALID_INPUT", `${toolName} layerIds must contain only PRG area layers.`);
+    }
+  }
 }
