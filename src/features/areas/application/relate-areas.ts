@@ -5,7 +5,7 @@ import { assertDataInstalled, databaseTableHasRows } from "../../../shared/data-
 import { decodeWkb } from "../../spatial/index.js";
 import { geometriesIntersect } from "../../spatial/infrastructure/turf/geometry-predicates.js";
 import { getPrgLayer, listPrgLayers, type PrgLayerCategory } from "../../source-catalog/index.js";
-import { AreaToolError, readAreaById, toAreaSummary, type AreaRow, type AreaSummary } from "./area-model.js";
+import { AreaToolError, assertValidOn, readAreaById, toAreaSummary, type AreaRow, type AreaSummary } from "./area-model.js";
 
 export type RelateAreasInput = {
   readonly areaId: string;
@@ -111,6 +111,7 @@ function validateRelateAreasInput(input: RelateAreasInput): void {
     throw new AreaToolError("INVALID_INPUT", "relate_areas maxCandidates must be a positive integer.");
   }
 
+  assertValidOn("relate_areas", input.validOn);
   validateAreaCategory("relate_areas", input.category);
   validateAreaLayerIds("relate_areas", input.layerIds);
 }

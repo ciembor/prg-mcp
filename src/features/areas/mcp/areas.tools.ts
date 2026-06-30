@@ -193,9 +193,10 @@ function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; rea
   let layerIds: readonly string[];
 
   if (input.layerId) {
-    layerIds = getPrgLayer(input.layerId) ? [input.layerId] : [];
+    const layer = getPrgLayer(input.layerId);
+    layerIds = layer?.sourceChannel === "wfs" ? [input.layerId] : [];
   } else if (input.layerIds && input.layerIds.length > 0) {
-    layerIds = input.layerIds.filter((layerId) => getPrgLayer(layerId));
+    layerIds = input.layerIds.filter((layerId) => getPrgLayer(layerId)?.sourceChannel === "wfs");
   } else {
     layerIds = listPrgLayers()
       .filter((layer) => layer.sourceChannel === "wfs" && (!input.category || layer.category === input.category))
@@ -207,6 +208,8 @@ function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; rea
 
   return createDataResultMetadata(config, {
     channels,
+    archiveYear: 0,
+    datasetKeys: layerIds.map((layerId) => `current:${layerId}`),
     fallbackCoverage,
     layerIds,
     requestedScopes: ["country:PL"],

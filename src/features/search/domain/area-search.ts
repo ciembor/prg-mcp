@@ -23,6 +23,7 @@ export type AreaSearchOptions = {
   layerId?: string;
   layerIds?: readonly string[];
   snapshotId?: number;
+  useLatestSnapshotPerLayer?: boolean;
   validOn?: string;
   limit?: number;
 };

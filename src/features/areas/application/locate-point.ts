@@ -6,7 +6,7 @@ import { decodeWkb } from "../../spatial/index.js";
 import { pointCoveredByPolygon } from "../../spatial/infrastructure/turf/geometry-predicates.js";
 import type { MultiPolygonGeometry, PolygonGeometry } from "../../spatial/index.js";
 import { getPrgLayer, listPrgLayers, type PrgLayerCategory } from "../../source-catalog/index.js";
-import { AreaToolError, toAreaSummary, type AreaRow, type AreaSummary } from "./area-model.js";
+import { AreaToolError, assertValidOn, toAreaSummary, type AreaRow, type AreaSummary } from "./area-model.js";
 
 export type LocatePointInput = {
   readonly x: number;
@@ -104,6 +104,7 @@ function validateLocatePointInput(input: LocatePointInput): void {
     throw new AreaToolError("INVALID_INPUT", "locate_point maxCandidates must be a positive integer.");
   }
 
+  assertValidOn("locate_point", input.validOn);
   validateAreaCategory("locate_point", input.category);
   validateAreaLayerIds("locate_point", input.layerIds);
 }

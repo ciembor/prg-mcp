@@ -1,7 +1,7 @@
 import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
-import { compareAddressResults, searchAddresses as searchAddressFts, type AddressSearchResult } from "../../search/index.js";
+import { compareAddressResults, normalizePolishSearchText, searchAddresses as searchAddressFts, type AddressSearchResult } from "../../search/index.js";
 import {
   AddressToolError,
   addressRecoveryAction,
@@ -110,8 +110,9 @@ function normalizeStructuredQuery(query: AddressStructuredQuery): NormalizedStru
 function decodeStructuredStreetId(streetId: string): StreetIdentifier | undefined {
   try {
     return decodeStreetId(streetId);
-  } catch {
-    return undefined;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown parse error";
+    throw new AddressToolError("INVALID_INPUT", `Invalid search_addresses structured streetId: ${reason}`);
   }
 }
 
@@ -131,6 +132,8 @@ function selectAddressShards(
 }
 
 function searchStructuredObjectIds(database: import("better-sqlite3").Database, query: AddressStructuredQuery, limit: number): string[] {
+  database.function("normalizedText", { deterministic: true }, (value: unknown) => (typeof value === "string" ? normalizePolishSearchText(value) : ""));
+
   return (database
     .prepare(`
       select object_id
@@ -138,23 +141,27 @@ function searchStructuredObjectIds(database: import("better-sqlite3").Database, 
       where (@municipalityCode is null or municipality_code = @municipalityCode)
         and (@localityId is null or locality_id = @localityId)
         and (@streetId is null or street_id = @streetId)
-        and (@localityName is null or lower(locality_name) = lower(@localityName))
-        and (@streetName is null or lower(street_name) = lower(@streetName))
-        and (@buildingNumber is null or lower(building_number) = lower(@buildingNumber))
+        and (@localityName is null or normalizedText(locality_name) = @localityName)
+        and (@streetName is null or normalizedText(street_name) = @streetName)
+        and (@buildingNumber is null or normalizedText(building_number) = @buildingNumber)
         and (@postalCode is null or postal_code = @postalCode)
       order by locality_name collate nocase asc, street_name collate nocase asc, building_number collate nocase asc, object_id asc
       limit @limit
     `)
     .all({
-      buildingNumber: query.buildingNumber ?? null,
+      buildingNumber: normalizeStructuredText(query.buildingNumber),
       limit,
       localityId: query.localityId ?? null,
-      localityName: query.localityName ?? null,
+      localityName: normalizeStructuredText(query.localityName),
       municipalityCode: query.municipalityCode ?? null,
       postalCode: query.postalCode ?? null,
       streetId: query.streetId ?? null,
-      streetName: query.streetName ?? null,
+      streetName: normalizeStructuredText(query.streetName),
     }) as Array<{ object_id: string }>).map((row) => row.object_id);
+}
+
+function normalizeStructuredText(value: string | undefined): string | null {
+  return value === undefined ? null : normalizePolishSearchText(value);
 }
 
 function readAddressesByObjectIds(database: import("better-sqlite3").Database, objectIds: readonly string[]): AddressRow[] {

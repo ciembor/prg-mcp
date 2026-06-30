@@ -95,7 +95,7 @@ function simplifyGeometry(geometry: PrgGeometry, tolerance: number): PrgGeometry
 
 function validateGeoJsonGeometry(geometry: PrgGeometry): PrgGeometry {
   if (!["Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"].includes(geometry.type)) {
-    throw new Error("Unsupported GeoJSON geometry type.");
+    throw new AreaToolError("INVALID_INPUT", "Unsupported GeoJSON geometry type.");
   }
 
   validateGeometryCoordinates(geometry);

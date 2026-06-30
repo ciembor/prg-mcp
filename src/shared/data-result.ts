@@ -36,10 +36,12 @@ export function createDataResultMetadata(
     readonly channels: readonly string[];
     readonly fallbackCoverage?: readonly CoveragePair[];
     readonly fallbackScopes?: readonly string[];
+    readonly datasetKeys?: readonly string[];
+    readonly archiveYear?: number;
     readonly requestedScopes?: readonly string[];
   },
 ): DataResultMetadata {
-  const coverage = readInstalledCoverage(config, input.layerIds);
+  const coverage = readInstalledCoverage(config, input.layerIds, { archiveYear: input.archiveYear, datasetKeys: input.datasetKeys });
   const requestedScopes = input.requestedScopes && input.requestedScopes.length > 0 ? input.requestedScopes : undefined;
   const coveragePairs = coverage.pairs.length > 0 ? coverage.pairs : (input.fallbackCoverage ?? fallbackCoveragePairs(input.layerIds, input.fallbackScopes ?? []));
   const installedScopes = [...new Set(coveragePairs.map((pair) => pair.scope))].sort();
@@ -97,7 +99,11 @@ export function isMissingSqliteTableError(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "SQLITE_ERROR" && /no such table:/iu.test(error.message);
 }
 
-function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): { readonly pairs: readonly CoveragePair[]; readonly syncedAt: string | null } {
+function readInstalledCoverage(
+  config: PrgConfig,
+  layerIds: readonly string[],
+  filters: { readonly datasetKeys?: readonly string[]; readonly archiveYear?: number } = {},
+): { readonly pairs: readonly CoveragePair[]; readonly syncedAt: string | null } {
   if (layerIds.length === 0) return { pairs: [], syncedAt: null };
 
   const path = join(config.dataDir, "catalog.sqlite");
@@ -106,17 +112,25 @@ function readInstalledCoverage(config: PrgConfig, layerIds: readonly string[]): 
   const database = new Database(path, { fileMustExist: true, readonly: true });
   try {
     const layerIdSet = new Set(layerIds);
+    const datasetKeySet = filters.datasetKeys ? new Set(filters.datasetKeys) : undefined;
     const rows = (database.prepare(`
-      select c.layer_id as layerId, c.scope_type as scopeType, c.scope_code as scopeCode, c.completeness as completeness, s.downloaded_at as downloadedAt
+      select c.layer_id as layerId, c.dataset_key as datasetKey, c.archive_year as archiveYear, c.scope_type as scopeType, c.scope_code as scopeCode, c.completeness as completeness, s.downloaded_at as downloadedAt
       from installed_coverage c join snapshots s on s.id = c.snapshot_id
       order by c.scope_type, c.scope_code, s.downloaded_at desc
     `).all() as Array<{
+      archiveYear: number;
+      datasetKey: string;
       layerId: string;
       scopeType: string;
       scopeCode: string;
       completeness: string;
       downloadedAt: string;
-    }>).filter((row) => layerIdSet.has(row.layerId) && row.completeness === "complete");
+    }>).filter((row) =>
+      layerIdSet.has(row.layerId)
+      && row.completeness === "complete"
+      && (!datasetKeySet || datasetKeySet.has(row.datasetKey))
+      && (filters.archiveYear === undefined || row.archiveYear === filters.archiveYear),
+    );
 
     return {
       pairs: rows.map((row) => ({ layerId: row.layerId, scope: `${row.scopeType}:${row.scopeCode}` })),

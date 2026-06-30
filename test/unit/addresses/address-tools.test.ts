@@ -52,9 +52,18 @@ describe("P6 address tools", () => {
       voivodeshipCodes: ["14"],
     })).resolves.toMatchObject({ addresses: [] });
     await expect(searchAddresses(config, {
+      structured: { buildingNumber: "12A", localityName: "Warszawa", streetName: "Zurawia" },
+      voivodeshipCodes: ["14"],
+    })).resolves.toMatchObject({
+      addresses: [{ addressId: warszawaAddressId, buildingNumber: "12A", localityName: "Warszawa", streetName: "Żurawia" }],
+    });
+    await expect(searchAddresses(config, {
       structured: { streetId: zurawiaStreetId },
     })).resolves.toMatchObject({
       addresses: [{ buildingNumber: "12A", streetId: zurawiaStreetId, voivodeshipCode: "14" }],
+    });
+    await expect(searchAddresses(config, { structured: { streetId: "not-an-opaque-street-id" } })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
     });
     await expect(searchAddresses(config, { structured: { streetId: zurawiaStreetId }, voivodeshipCodes: ["10"] })).rejects.toMatchObject({
       code: "INVALID_INPUT",

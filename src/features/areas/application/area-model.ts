@@ -160,6 +160,22 @@ export function whereValidOnClause(validOn?: string): string {
   return "and (valid_from is null or valid_from <= @validOn) and (valid_to is null or valid_to >= @validOn)";
 }
 
+export function assertValidOn(toolName: string, validOn: string | undefined): void {
+  if (validOn === undefined) {
+    return;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(validOn)) {
+    throw new AreaToolError("INVALID_INPUT", `${toolName} validOn must use YYYY-MM-DD format.`);
+  }
+
+  const [year, month, day] = validOn.split("-").map(Number);
+  const date = new Date(Date.UTC(year ?? 0, (month ?? 0) - 1, day ?? 0));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== (month ?? 0) - 1 || date.getUTCDate() !== day) {
+    throw new AreaToolError("INVALID_INPUT", `${toolName} validOn must be a real calendar date.`);
+  }
+}
+
 function requireLayer(layerId: string): PrgLayer {
   const layer = getPrgLayer(layerId);
 
