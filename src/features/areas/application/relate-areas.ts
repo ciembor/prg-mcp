@@ -26,8 +26,8 @@ export type RelateAreasResult = {
 export async function relateAreas(config: PrgConfig, input: RelateAreasInput): Promise<RelateAreasResult> {
   validateRelateAreasInput(input);
   assertDataInstalled(
-    databaseTableHasRows(config, "boundaries.sqlite", "areas"),
-    "PRG boundary data is not installed.",
+    databaseTableHasRows(config, "boundaries.sqlite", "areas") && databaseTableHasRows(config, "boundaries.sqlite", "areas_rtree"),
+    "PRG boundary data or spatial index is not installed.",
     "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
   );
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });

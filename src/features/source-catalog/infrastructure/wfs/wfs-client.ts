@@ -55,6 +55,8 @@ export type WfsFeaturePageRequest = {
   readonly typeNames: readonly string[];
   readonly count: number;
   readonly startIndex?: number;
+  readonly maxPages?: number;
+  readonly maxRecords?: number;
   readonly srsName?: WfsSupportedCrs;
   readonly bbox?: WfsBbox;
   readonly filter?: string;
@@ -148,10 +150,17 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
     },
     getFeaturePages: async function* getFeaturePages(request) {
       const pageSize = request.count;
+      const maxPages = request.maxPages ?? 10_000;
+      const maxRecords = request.maxRecords ?? Number.MAX_SAFE_INTEGER;
       let startIndex = request.startIndex ?? 0;
       let nextUrl: string | undefined;
+      let pageCount = 0;
+      let recordCount = 0;
+      const visitedUrls = new Set<string>();
 
       while (true) {
+        assertPageLimit(pageCount, maxPages);
+
         const page = nextUrl
           ? await getFeaturePageFromUrl(nextUrl)
           : await this.getFeaturePage({
@@ -159,6 +168,10 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
             count: pageSize,
             startIndex,
           });
+
+        pageCount += 1;
+        recordCount += page.numberReturned;
+        assertRecordLimit(recordCount, maxRecords);
 
         yield page;
 
@@ -168,9 +181,34 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
 
         startIndex += page.numberReturned;
         nextUrl = page.next ? sameOriginNextUrl(options.endpoint, page.next) : undefined;
+        rememberNextUrl(visitedUrls, nextUrl);
       }
     },
   };
+}
+
+function assertPageLimit(pageCount: number, maxPages: number): void {
+  if (pageCount >= maxPages) {
+    throw new WfsClientError("WFS pagination exceeded maxPages.", "SOURCE_UNAVAILABLE", { maxPages });
+  }
+}
+
+function assertRecordLimit(recordCount: number, maxRecords: number): void {
+  if (recordCount > maxRecords) {
+    throw new WfsClientError("WFS pagination exceeded maxRecords.", "SOURCE_UNAVAILABLE", { maxRecords });
+  }
+}
+
+function rememberNextUrl(visitedUrls: Set<string>, nextUrl: string | undefined): void {
+  if (!nextUrl) {
+    return;
+  }
+
+  if (visitedUrls.has(nextUrl)) {
+    throw new WfsClientError("WFS pagination returned a repeated next URL.", "SOURCE_UNAVAILABLE", { nextUrl });
+  }
+
+  visitedUrls.add(nextUrl);
 }
 
 function handleRequestError(

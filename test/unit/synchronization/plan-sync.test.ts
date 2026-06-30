@@ -28,6 +28,9 @@ describe("PRG synchronization planner", () => {
   });
 
   it("rejects invalid TERYT and insufficient free space before synchronization", () => {
+    expect(() => planSync({ availableDiskBytes: 10 ** 12, mode: "invalid" as never, profile: "administrative" })).toThrowError(
+      expect.objectContaining({ code: "INVALID_MODE" }),
+    );
     expect(() => planSync({ availableDiskBytes: 1, mode: "missing", profile: "administrative" })).toThrowError(
       expect.objectContaining({ code: "INSUFFICIENT_DISK_SPACE" }),
     );

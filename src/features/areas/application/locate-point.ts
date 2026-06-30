@@ -27,8 +27,8 @@ export type LocatePointResult = {
 export async function locatePoint(config: PrgConfig, input: LocatePointInput): Promise<LocatePointResult> {
   validateLocatePointInput(input);
   assertDataInstalled(
-    databaseTableHasRows(config, "boundaries.sqlite", "areas"),
-    "PRG boundary data is not installed.",
+    databaseTableHasRows(config, "boundaries.sqlite", "areas") && databaseTableHasRows(config, "boundaries.sqlite", "areas_rtree"),
+    "PRG boundary data or spatial index is not installed.",
     "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
   );
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
@@ -144,8 +144,8 @@ function validateAreaCategory(toolName: string, category: PrgLayerCategory | und
 function validateAreaLayerIds(toolName: string, layerIds: readonly string[] | undefined): void {
   for (const layerId of layerIds ?? []) {
     const layer = getPrgLayer(layerId);
-    if (!layer || layer.sourceChannel !== "wfs") {
-      throw new AreaToolError("INVALID_INPUT", `${toolName} layerIds must contain only PRG area layers.`);
+    if (!layer || layer.sourceChannel !== "wfs" || layer.geometryType !== "polygon") {
+      throw new AreaToolError("INVALID_INPUT", `${toolName} layerIds must contain only PRG polygon area layers.`);
     }
   }
 }

@@ -40,15 +40,20 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     }
 
     try {
+      const remainingCandidates = maxCandidates - results.length;
+      if (remainingCandidates <= 0) {
+        throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
+      }
+
       let rows = isAddressRtreeComplete(database)
-        ? readRtreeCandidates(database, input.x, input.y, radiusMeters, maxCandidates + 1)
+        ? readRtreeCandidates(database, input.x, input.y, radiusMeters, remainingCandidates + 1)
         : [];
 
       if (rows.length === 0) {
-        rows = readTableCandidates(database, input.x, input.y, radiusMeters, maxCandidates + 1);
+        rows = readTableCandidates(database, input.x, input.y, radiusMeters, remainingCandidates + 1);
       }
 
-      if (rows.length > maxCandidates) {
+      if (rows.length > remainingCandidates) {
         throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
       }
 

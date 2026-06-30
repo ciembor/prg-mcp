@@ -65,7 +65,7 @@ export function assertDataInstalled(installed: boolean, message: string, recover
   if (!installed) throw new DataNotInstalledError(message, recoveryAction);
 }
 
-export function databaseTableHasRows(config: PrgConfig, name: string, table: "addresses" | "areas" | "streets"): boolean {
+export function databaseTableHasRows(config: PrgConfig, name: string, table: "addresses" | "areas" | "areas_rtree" | "streets"): boolean {
   const path = join(config.dataDir, name);
   if (!existsSync(path)) return false;
 
@@ -86,9 +86,10 @@ export function databaseTableHasRows(config: PrgConfig, name: string, table: "ad
   }
 }
 
-function tableHasRowsSql(table: "addresses" | "areas" | "streets"): string {
+function tableHasRowsSql(table: "addresses" | "areas" | "areas_rtree" | "streets"): string {
   if (table === "addresses") return "select 1 as present from addresses limit 1";
   if (table === "areas") return "select 1 as present from areas limit 1";
+  if (table === "areas_rtree") return "select 1 as present from areas_rtree limit 1";
   return "select 1 as present from streets limit 1";
 }
 

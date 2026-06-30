@@ -16,6 +16,7 @@ export type PagedWfsSourceOptions = {
   readonly sourceUrl: string;
   readonly schemaFingerprint: string;
   readonly adapterVersion: string;
+  readonly maxDownloadBytes?: number;
   readonly stateDate?: () => string | undefined;
 };
 
@@ -26,7 +27,12 @@ export function createPagedWfsSyncSource(options: PagedWfsSourceOptions): SyncSo
       const records: SyncRecord[] = [];
       const chunks: Uint8Array[] = [];
       let expectedCount: number | "unknown" = "unknown";
+      let downloadedBytes = 0;
       for await (const page of options.pages(target)) {
+        downloadedBytes += page.bytes.byteLength;
+        if (options.maxDownloadBytes !== undefined && downloadedBytes > options.maxDownloadBytes) {
+          throw new Error(`WFS download exceeded PRG_MAX_DOWNLOAD_BYTES limit of ${options.maxDownloadBytes} bytes.`);
+        }
         chunks.push(page.bytes);
         expectedCount = mergeExpectedCount(expectedCount, page.numberMatched);
         records.push(...page.records);
@@ -64,11 +70,11 @@ export type AddressPackage = {
 
 export type AddressPackageSourceOptions = {
   readonly probe: (target: SyncTarget, conditional?: { readonly etag?: string; readonly lastModified?: string }) => Promise<SourceProbe>;
-  readonly fetchPackage: (target: SyncTarget) => Promise<AddressPackage>;
+  readonly fetchPackage: (target: SyncTarget, conditional?: { readonly etag?: string; readonly lastModified?: string }) => Promise<AddressPackage>;
 };
 
 export function createAddressPackageSyncSource(options: AddressPackageSourceOptions): SyncSource {
-  return { probe: options.probe, download: async (target) => options.fetchPackage(target) };
+  return { probe: options.probe, download: async (target, conditional) => options.fetchPackage(target, conditional) };
 }
 
 export function partitionAddressRecordsByVoivodeship(records: readonly SyncRecord[]): ReadonlyMap<string, readonly SyncRecord[]> {
@@ -76,7 +82,8 @@ export function partitionAddressRecordsByVoivodeship(records: readonly SyncRecor
   const streetShardHints = streetShardHintsByObjectId(records);
   for (const record of records) {
     const explicitShard = shardFromMunicipalityCode(record.municipalityCode);
-    const recordShards = explicitShard ? [explicitShard] : [...(streetShardHints.get(record.objectId) ?? [])];
+    const hintKey = record.recordType === "address" ? record.streetId : record.objectId;
+    const recordShards = explicitShard ? [explicitShard] : [...(hintKey ? (streetShardHints.get(hintKey) ?? []) : [])];
 
     if (recordShards.length === 0) {
       const label = record.recordType === "street" ? "Street" : "Address";

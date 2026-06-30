@@ -45,6 +45,19 @@ describe("paged synchronization sources", () => {
     await expect(excessive.download({} as never)).rejects.toThrow("WFS coverage mismatch");
   });
 
+  it("enforces the configured WFS download byte limit while paging", async () => {
+    const source = createPagedWfsSyncSource({
+      adapterVersion: "1", maxDownloadBytes: 1, schemaFingerprint: "schema", sourceUrl: "https://example.test/wfs",
+      probe: async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test/wfs", status: "available" }),
+      pages: async function* () {
+        yield { bytes: new Uint8Array([1]), next: true, numberMatched: 2, records: [record("a")] };
+        yield { bytes: new Uint8Array([2]), next: false, numberMatched: 2, records: [record("b")] };
+      },
+    });
+
+    await expect(source.download({} as never)).rejects.toThrow("PRG_MAX_DOWNLOAD_BYTES");
+  });
+
   it("partitions national address packages into voivodeship shards", () => {
     const shards = partitionAddressRecordsByVoivodeship([record("a", "1465011"), record("b", "0201011")]);
     expect([...shards.keys()]).toEqual(["14", "02"]);
@@ -64,11 +77,25 @@ describe("paged synchronization sources", () => {
     expect(() => partitionAddressRecordsByVoivodeship([street("orphan")])).toThrow("Street orphan has no valid municipality code");
   });
 
+  it("partitions address records without municipality code through their street ids", () => {
+    const shards = partitionAddressRecordsByVoivodeship([
+      { ...record("hint-source", "1465011"), streetId: "street-1" },
+      { ...record("address-without-municipality"), streetId: "street-1" },
+      street("street-1"),
+    ]);
+
+    expect(shards.get("14")?.map(({ objectId }) => objectId)).toEqual(["hint-source", "address-without-municipality", "street-1"]);
+  });
+
   it("keeps address package discovery separate from payload download", async () => {
+    const conditional = { etag: "etag-one", lastModified: "Mon, 22 Jun 2026 00:00:00 GMT" };
     const source = createAddressPackageSyncSource({
-      fetchPackage: async () => ({ adapterVersion: "1", bytes: new Uint8Array(), records: [], schemaFingerprint: "schema", sourceUrl: "https://example.test/address.zip" }),
+      fetchPackage: async (_target, receivedConditional) => {
+        expect(receivedConditional).toEqual(conditional);
+        return { adapterVersion: "1", bytes: new Uint8Array(), records: [], schemaFingerprint: "schema", sourceUrl: "https://example.test/address.zip" };
+      },
       probe: async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test/address.zip", status: "available" }),
     });
-    expect((await source.download({} as never)).adapterVersion).toBe("1");
+    expect((await source.download({} as never, conditional)).adapterVersion).toBe("1");
   });
 });

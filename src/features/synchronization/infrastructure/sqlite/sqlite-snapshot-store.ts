@@ -67,12 +67,14 @@ export function createSqliteSnapshotStore(catalogPath: string): SnapshotStore {
         const [scopeType, ...scopeCodeParts] = metadata.scope.split(":");
 
         database.prepare(`
-          insert into installed_coverage(layer_id, scope_type, scope_code, snapshot_id, completeness)
-          values (@layerId, @scopeType, @scopeCode, @snapshotId, 'complete')
-          on conflict(layer_id, scope_type, scope_code) do update set
+          insert into installed_coverage(layer_id, dataset_key, archive_year, scope_type, scope_code, snapshot_id, completeness)
+          values (@layerId, @datasetKey, @archiveYear, @scopeType, @scopeCode, @snapshotId, 'complete')
+          on conflict(layer_id, dataset_key, archive_year, scope_type, scope_code) do update set
             snapshot_id=excluded.snapshot_id,
             completeness=excluded.completeness
         `).run({
+          archiveYear: metadata.archiveYear ?? 0,
+          datasetKey: metadata.datasetKey,
           layerId: target.layer.layerId,
           scopeCode: scopeCodeParts.join(":"),
           scopeType,

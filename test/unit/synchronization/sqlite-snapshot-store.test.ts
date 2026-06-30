@@ -30,14 +30,14 @@ describe("SQLite snapshot metadata", () => {
       layer,
       scope: { code: "PL", type: "country" },
     });
-    await store.save({ ...metadata, archiveYear: 2024, checkedAt: "2026-06-24T00:00:00.000Z", etag: "two" }, {
+    await store.save({ ...metadata, checkedAt: "2026-06-24T00:00:00.000Z", etag: "two" }, {
       datasetKey: metadata.datasetKey,
       estimatedDiskBytes: 1,
       estimatedDownloadBytes: 1,
       layer,
       scope: { code: "PL", type: "country" },
     });
-    expect(await store.find(metadata.datasetKey, metadata.scope)).toEqual({ ...metadata, archiveYear: 2024, checkedAt: "2026-06-24T00:00:00.000Z", etag: "two" });
+    expect(await store.find(metadata.datasetKey, metadata.scope)).toEqual({ ...metadata, checkedAt: "2026-06-24T00:00:00.000Z", etag: "two" });
 
     const database = new Database(catalogPath, { readonly: true });
     try {
@@ -77,6 +77,44 @@ describe("SQLite snapshot metadata", () => {
     try {
       expect(database.prepare("select count(*) as count from snapshots").get()).toEqual({ count: 1 });
       expect(database.prepare("select count(*) as count from installed_coverage").get()).toEqual({ count: 1 });
+    } finally {
+      database.close();
+    }
+  });
+
+  it("keeps current and archive coverage separate for the same layer and scope", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-sync-coverage-"));
+    const { catalogPath } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });
+    const store = createSqliteSnapshotStore(catalogPath);
+    const layer = getPrgLayer("A03");
+    if (!layer) throw new Error("Missing test layer.");
+    const target = { datasetKey: "current:A03", estimatedDiskBytes: 1, estimatedDownloadBytes: 1, layer, scope: { code: "PL", type: "country" as const } };
+    const metadata: SnapshotMetadata = {
+      adapterVersion: "wfs-2", checkedAt: "2026-06-23T00:00:00.000Z", datasetKey: "current:A03",
+      downloadedAt: "2026-06-23T00:00:00.000Z", recordCount: 1, schemaFingerprint: "schema",
+      scope: "country:PL", sha256: "current", sourceUrl: "https://example.test/wfs",
+    };
+
+    await store.save(metadata, target);
+    await store.save({
+      ...metadata,
+      archiveYear: 2024,
+      datasetKey: "archive:A03:2024",
+      sha256: "archive",
+      stateDate: "2024-01-01",
+    }, { ...target, datasetKey: "archive:A03:2024" });
+
+    const database = new Database(catalogPath, { readonly: true });
+    try {
+      expect(database.prepare(`
+        select c.layer_id, c.dataset_key, c.archive_year, c.scope_type, c.scope_code, s.sha256
+        from installed_coverage c
+        join snapshots s on s.id = c.snapshot_id
+        order by c.archive_year asc
+      `).all()).toEqual([
+        { archive_year: 0, dataset_key: "current:A03", layer_id: "A03", scope_code: "PL", scope_type: "country", sha256: "current" },
+        { archive_year: 2024, dataset_key: "archive:A03:2024", layer_id: "A03", scope_code: "PL", scope_type: "country", sha256: "archive" },
+      ]);
     } finally {
       database.close();
     }

@@ -18,7 +18,7 @@ describe("operational MCP tools", () => {
     const app = createApp(testConfig(dataDir));
     const about = await callTool(app, "about", {});
     const server = await callTool(app, "server_status", {});
-    expect(about.structuredContent).toMatchObject({ name: "prg-mcp", databaseSchemaVersion: 2 });
+    expect(about.structuredContent).toMatchObject({ name: "prg-mcp", databaseSchemaVersion: 3 });
     expect(server.structuredContent).toMatchObject({ dataDir, sqlite: { fts5: true, rtree: true }, totalSizeBytes: 0 });
     expect(server.structuredContent).toMatchObject({
       databases: expect.arrayContaining([
@@ -53,7 +53,7 @@ describe("operational MCP tools", () => {
     });
     expect(server).toMatchObject({
       databases: expect.arrayContaining([
-        expect.objectContaining({ canonicalMappingVersion: "2026-06-22", name: "catalog.sqlite", schemaStatus: "current", schemaVersion: 2 }),
+        expect.objectContaining({ canonicalMappingVersion: "2026-06-22", name: "catalog.sqlite", schemaStatus: "current", schemaVersion: 3 }),
       ]),
     });
   });

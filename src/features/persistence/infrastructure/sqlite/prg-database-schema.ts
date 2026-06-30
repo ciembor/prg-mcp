@@ -108,14 +108,15 @@ function migrateCatalogDatabase(database: Database.Database, appVersion: string)
 
       create table if not exists installed_coverage (
         layer_id text not null,
+        dataset_key text not null default '',
+        archive_year integer not null default 0,
         scope_type text not null,
         scope_code text not null,
         snapshot_id integer not null references snapshots(id),
         completeness text not null,
-        primary key (layer_id, scope_type, scope_code)
+        primary key (layer_id, dataset_key, archive_year, scope_type, scope_code)
       );
 
-      create index if not exists installed_coverage_layer_idx on installed_coverage(layer_id, scope_type, scope_code);
       create index if not exists snapshots_dataset_idx on snapshots(dataset_key, scope, state_date);
     `);
     addColumnIfMissing(database, "snapshots", "checked_at", "text not null default '1970-01-01T00:00:00.000Z'");
@@ -124,6 +125,7 @@ function migrateCatalogDatabase(database: Database.Database, appVersion: string)
     addColumnIfMissing(database, "snapshots", "state_date_key", "text not null default ''");
     database.prepare("update snapshots set state_date_key = coalesce(state_date, '') where state_date_key != coalesce(state_date, '')").run();
     migrateInstalledCoveragePrimaryKey(database);
+    database.exec("create index if not exists installed_coverage_layer_idx on installed_coverage(layer_id, scope_type, scope_code, dataset_key, archive_year)");
     deduplicateSnapshots(database);
     database.exec("create unique index if not exists snapshots_dataset_state_date_key_idx on snapshots(dataset_key, scope, state_date_key)");
     updateSchemaMetadata(database);
@@ -336,36 +338,42 @@ function migrateInstalledCoveragePrimaryKey(database: Database.Database): void {
     .sort((left, right) => left.pk - right.pk)
     .map((column) => column.name);
 
-  if (primaryKeyColumns.join(",") === "layer_id,scope_type,scope_code") {
+  if (primaryKeyColumns.join(",") === "layer_id,dataset_key,archive_year,scope_type,scope_code") {
     return;
   }
 
   database.exec(`
     create table installed_coverage_next (
       layer_id text not null,
+      dataset_key text not null,
+      archive_year integer not null,
       scope_type text not null,
       scope_code text not null,
       snapshot_id integer not null references snapshots(id),
       completeness text not null,
-      primary key (layer_id, scope_type, scope_code)
+      primary key (layer_id, dataset_key, archive_year, scope_type, scope_code)
     );
 
-    insert into installed_coverage_next(layer_id, scope_type, scope_code, snapshot_id, completeness)
-    select c.layer_id, c.scope_type, c.scope_code, c.snapshot_id, c.completeness
+    insert into installed_coverage_next(layer_id, dataset_key, archive_year, scope_type, scope_code, snapshot_id, completeness)
+    select c.layer_id, s.dataset_key, coalesce(s.archive_year, 0), c.scope_type, c.scope_code, c.snapshot_id, c.completeness
     from installed_coverage c
+    join snapshots s on s.id = c.snapshot_id
     join (
-      select layer_id, scope_type, scope_code, max(snapshot_id) as snapshot_id
-      from installed_coverage
-      group by layer_id, scope_type, scope_code
+      select c.layer_id, s.dataset_key, coalesce(s.archive_year, 0) as archive_year, c.scope_type, c.scope_code, max(c.snapshot_id) as snapshot_id
+      from installed_coverage c
+      join snapshots s on s.id = c.snapshot_id
+      group by c.layer_id, s.dataset_key, coalesce(s.archive_year, 0), c.scope_type, c.scope_code
     ) latest
       on latest.layer_id = c.layer_id
+     and latest.dataset_key = s.dataset_key
+     and latest.archive_year = coalesce(s.archive_year, 0)
      and latest.scope_type = c.scope_type
      and latest.scope_code = c.scope_code
      and latest.snapshot_id = c.snapshot_id;
 
     drop table installed_coverage;
     alter table installed_coverage_next rename to installed_coverage;
-    create index if not exists installed_coverage_layer_idx on installed_coverage(layer_id, scope_type, scope_code);
+    create index if not exists installed_coverage_layer_idx on installed_coverage(layer_id, scope_type, scope_code, dataset_key, archive_year);
   `);
 }
 

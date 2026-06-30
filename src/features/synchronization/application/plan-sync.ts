@@ -38,6 +38,7 @@ export type PlanSyncInput = {
 };
 
 export function planSync(input: PlanSyncInput): SyncPlan {
+  validateSyncMode(input.mode);
   const layers = resolveLayers(input);
   const requestedScopes = resolveScopes(input.teryt);
   validateScopeCompatibility(layers, requestedScopes);
@@ -56,6 +57,12 @@ export function planSync(input: PlanSyncInput): SyncPlan {
   }
 
   return { mode: input.mode, profile: input.profile, targets, estimatedDownloadBytes, estimatedDiskBytes, availableDiskBytes: input.availableDiskBytes };
+}
+
+function validateSyncMode(mode: SyncMode): void {
+  if (mode !== "missing" && mode !== "stale" && mode !== "force") {
+    throw new SyncPlanningError(`Invalid sync mode: ${String(mode)}.`, "INVALID_MODE", { mode });
+  }
 }
 
 function resolveLayers(input: PlanSyncInput): readonly PrgLayer[] {

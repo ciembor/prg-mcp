@@ -49,6 +49,8 @@ export function createSqliteStagingPublisher(options: SqliteStagingPublisherOpti
       if (await exists(publication.backupPath)) {
         await remove(publication.targetPath);
         await rename(publication.backupPath, publication.targetPath);
+      } else {
+        await remove(publication.targetPath);
       }
     },
     finalize: async (candidate) => remove(asFilePublication(candidate).backupPath),

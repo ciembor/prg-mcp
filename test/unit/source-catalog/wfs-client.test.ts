@@ -195,6 +195,47 @@ describe("WFS 2.0 client", () => {
     expect(new URL(requestedUrls[1] ?? "").searchParams.get("STARTINDEX")).toBe("2");
   });
 
+  it("stops WFS pagination on repeated next URLs and configured ceilings", async () => {
+    const repeatedNextClient = createWfsClient({
+      endpoint,
+      fetch: createFetchMock([], [
+        response(featureCollection({ numberMatched: "unknown", numberReturned: 2, next: "https://example.test/page-2" })),
+        response(featureCollection({ numberMatched: "unknown", numberReturned: 2, next: "https://example.test/page-2" })),
+      ]),
+      retry: { retries: 0 },
+    });
+
+    await expect(collectPages(repeatedNextClient.getFeaturePages({ typeNames: ["ms:A00_Granice_panstwa"], count: 2 }))).rejects.toMatchObject({
+      code: "SOURCE_UNAVAILABLE",
+      message: "WFS pagination returned a repeated next URL.",
+    });
+
+    const maxPagesClient = createWfsClient({
+      endpoint,
+      fetch: createFetchMock([], [
+        response(featureCollection({ numberMatched: "unknown", numberReturned: 2 })),
+        response(featureCollection({ numberMatched: "unknown", numberReturned: 2 })),
+      ]),
+      retry: { retries: 0 },
+    });
+
+    await expect(collectPages(maxPagesClient.getFeaturePages({ typeNames: ["ms:A00_Granice_panstwa"], count: 2, maxPages: 1 }))).rejects.toMatchObject({
+      code: "SOURCE_UNAVAILABLE",
+      message: "WFS pagination exceeded maxPages.",
+    });
+
+    const maxRecordsClient = createWfsClient({
+      endpoint,
+      fetch: createFetchMock([], [response(featureCollection({ numberMatched: "unknown", numberReturned: 2 }))]),
+      retry: { retries: 0 },
+    });
+
+    await expect(collectPages(maxRecordsClient.getFeaturePages({ typeNames: ["ms:A00_Granice_panstwa"], count: 2, maxRecords: 1 }))).rejects.toMatchObject({
+      code: "SOURCE_UNAVAILABLE",
+      message: "WFS pagination exceeded maxRecords.",
+    });
+  });
+
   it("rejects non-finite WFS page counters", async () => {
     const client = createWfsClient({
       endpoint,
@@ -256,6 +297,14 @@ describe("WFS 2.0 client", () => {
     } satisfies Partial<WfsClientError>);
   });
 });
+
+async function collectPages(pages: AsyncGenerator<WfsFeaturePage>): Promise<WfsFeaturePage[]> {
+  const collected: WfsFeaturePage[] = [];
+  for await (const page of pages) {
+    collected.push(page);
+  }
+  return collected;
+}
 
 function createFetchMock(requestedUrls: string[], responses: WfsResponse[]): WfsFetch {
   return async (url) => {
