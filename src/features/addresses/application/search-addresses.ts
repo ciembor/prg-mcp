@@ -89,6 +89,10 @@ function validateSearchInput(input: SearchAddressesInput): void {
     throw new AddressToolError("INVALID_INPUT", "search_addresses structured input requires at least one field.");
   }
 
+  if (input.structured && Object.values(input.structured).some((value) => value === "")) {
+    throw new AddressToolError("INVALID_INPUT", "search_addresses structured fields must not be empty strings.");
+  }
+
   if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
     throw new AddressToolError("INVALID_INPUT", "search_addresses limit must be a positive integer.");
   }

@@ -143,6 +143,10 @@ function validateAreaCategory(toolName: string, category: PrgLayerCategory | und
 }
 
 function validateAreaLayerIds(toolName: string, layerIds: readonly string[] | undefined): void {
+  if (layerIds && layerIds.length === 0) {
+    throw new AreaToolError("INVALID_INPUT", `${toolName} layerIds must not be empty.`);
+  }
+
   for (const layerId of layerIds ?? []) {
     const layer = getPrgLayer(layerId);
     if (!layer || layer.sourceChannel !== "wfs" || layer.geometryType !== "polygon") {

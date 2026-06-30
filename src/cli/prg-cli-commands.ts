@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdir, statfs } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -158,16 +159,23 @@ function parseOptions(args: readonly string[]): OptionMap {
 function readSnapshotId(config: PrgConfig, layerId: string, explicit: string | undefined): number {
   if (explicit !== undefined) return parseInteger(explicit, "snapshot-id");
   const catalogPath = join(config.dataDir, "catalog.sqlite");
+  if (!existsSync(catalogPath)) {
+    throw new Error("No catalog metadata found; pass --snapshot-id or rebuild catalog.sqlite.");
+  }
   const database = new Database(catalogPath, { fileMustExist: true, readonly: true });
   try {
     const row = database.prepare(`
       select s.id as snapshotId
       from installed_coverage c join snapshots s on s.id = c.snapshot_id
       where c.layer_id = @layerId
+        and c.dataset_key = @datasetKey
+        and c.archive_year = 0
+        and c.scope_type = 'country'
+        and c.scope_code = 'PL'
         and c.completeness = 'complete'
       order by s.downloaded_at desc, s.id desc
       limit 1
-    `).get({ layerId }) as { snapshotId: number } | undefined;
+    `).get({ datasetKey: `current:${layerId}`, layerId }) as { snapshotId: number } | undefined;
     if (!row) throw new Error(`No installed snapshot found for layer ${layerId}.`);
     return row.snapshotId;
   } finally {

@@ -101,6 +101,28 @@ describe("data result coverage metadata", () => {
     });
   });
 
+  it("does not mark coverage complete without explicit requested scopes", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-data-result-no-request-"));
+
+    expect(createDataResultMetadata(loadPrgConfig({
+      configDir: dataDir,
+      dataDir,
+      logLevel: "silent",
+      port: 0,
+      transport: "stdio",
+    }, {}), {
+      channels: ["wfs"],
+      fallbackCoverage: [{ layerId: "A00", scope: "country:PL" }],
+      layerIds: ["A00"],
+    })).toMatchObject({
+      coverage: {
+        complete: false,
+        installedScopes: ["country:PL"],
+        missingScopes: [],
+      },
+    });
+  });
+
   it("filters installed coverage by dataset key and archive year", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "prg-data-result-dataset-"));
     const { catalogPath } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });

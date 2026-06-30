@@ -45,13 +45,10 @@ describe("PRG synchronization planner", () => {
     );
   });
 
-  it("plans mixed WFS and address layers with channel-specific scopes", () => {
-    const plan = planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00", "A07"], mode: "missing", teryt: ["14"] });
-
-    expect(plan.targets.map((target) => [target.layer.layerId, target.scope.type, target.scope.code])).toEqual([
-      ["A00", "country", "PL"],
-      ["A07", "voivodeship", "14"],
-    ]);
+  it("rejects mixed WFS and address layers when TERYT would silently widen WFS scope", () => {
+    expect(() => planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00", "A07"], mode: "missing", teryt: ["14"] })).toThrowError(
+      expect.objectContaining({ code: "INVALID_TERYT" }),
+    );
 
     const full = planSync({ availableDiskBytes: 10 ** 12, mode: "missing", profile: "poland-full" });
     expect(full.targets.some((target) => target.layer.sourceChannel === "wfs" && target.scope.code === "PL")).toBe(true);

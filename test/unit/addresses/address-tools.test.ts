@@ -69,6 +69,9 @@ describe("P6 address tools", () => {
       code: "INVALID_INPUT",
     });
     await expect(searchAddresses(config, { structured: {}, voivodeshipCodes: ["14"] })).rejects.toThrow("structured input requires at least one field");
+    await expect(searchAddresses(config, { structured: { localityName: "" }, voivodeshipCodes: ["14"] })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
     await expect(searchAddresses(config, {
       structured: { buildingNumber: "7", localityName: "Warszawa" },
       voivodeshipCodes: ["14"],
@@ -144,8 +147,8 @@ describe("P6 address tools", () => {
       lodz.close();
       mazowieckie.close();
     }
-    await expect(reverseAddress(config, { maxCandidates: 1, radiusMeters: 20, voivodeshipCodes: ["10", "14"], x: 100, y: 100 })).rejects.toMatchObject({
-      code: "CANDIDATE_LIMIT_EXCEEDED",
+    await expect(reverseAddress(config, { limit: 1, maxCandidates: 1, radiusMeters: 20, voivodeshipCodes: ["10", "14"], x: 100, y: 100 })).resolves.toMatchObject({
+      addresses: [{ distanceMeters: 0 }],
     });
   });
 
@@ -173,6 +176,16 @@ describe("P6 address tools", () => {
         rowid: 110,
         streetName: null,
         x: 0,
+        y: 0,
+      });
+      insertAddress(database, {
+        buildingNumber: "99",
+        localityName: "Daleko",
+        municipalityCode: "1465011",
+        objectId: "aa-far-object-id",
+        rowid: 111,
+        streetName: null,
+        x: 8,
         y: 0,
       });
     } finally {

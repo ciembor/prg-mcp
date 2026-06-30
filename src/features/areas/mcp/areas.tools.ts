@@ -140,7 +140,7 @@ export function createLocatePointTool(config: PrgConfig) {
     },
     input: z.object({
       category: areaCategorySchema.optional(),
-      layerIds: z.array(z.string().min(1)).max(54).optional(),
+      layerIds: z.array(z.string().min(1)).min(1).max(54).optional(),
       limit: z.number().int().min(1).max(100).default(20),
       maxCandidates: z.number().int().min(1).max(10_000).default(2_000),
       snapshotId: z.number().int().positive().optional(),
@@ -173,7 +173,7 @@ export function createRelateAreasTool(config: PrgConfig) {
     input: z.object({
       areaId: z.string().min(1),
       category: areaCategorySchema.optional(),
-      layerIds: z.array(z.string().min(1)).max(54).optional(),
+      layerIds: z.array(z.string().min(1)).min(1).max(54).optional(),
       limit: z.number().int().min(1).max(100).default(20),
       maxCandidates: z.number().int().min(1).max(10_000).default(1_000),
       snapshotId: z.number().int().positive().optional(),
@@ -208,7 +208,6 @@ function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; rea
 
   return createDataResultMetadata(config, {
     channels,
-    archiveYear: 0,
     datasetKeys: layerIds.map((layerId) => `current:${layerId}`),
     fallbackCoverage,
     layerIds,

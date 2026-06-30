@@ -115,6 +115,10 @@ function validateScopeCompatibility(layers: readonly PrgLayer[], scopes: readonl
   if (hasWfsLayer && !hasAddressLayer && hasNonCountryScope) {
     throw new SyncPlanningError("TERYT scopes are supported only for address-package layers.", "INVALID_TERYT", { scopes });
   }
+
+  if (hasWfsLayer && hasAddressLayer && hasNonCountryScope) {
+    throw new SyncPlanningError("TERYT scopes cannot be mixed with WFS layers because WFS synchronization is country-wide.", "INVALID_TERYT", { scopes });
+  }
 }
 
 function scopesForLayer(layer: PrgLayer, scopes: readonly SyncScope[] | undefined): readonly SyncScope[] {

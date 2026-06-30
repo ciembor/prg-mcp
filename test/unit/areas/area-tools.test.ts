@@ -115,6 +115,9 @@ describe("P5 area tools", () => {
     await expect(locatePoint(config, { layerIds: ["NOPE"], snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
       code: "INVALID_INPUT",
     });
+    await expect(locatePoint(config, { layerIds: [], snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
     await expect(locatePoint(config, { category: "administrative", validOn: "abc", x: 10, y: 5 })).rejects.toMatchObject({
       code: "INVALID_INPUT",
     });
@@ -129,6 +132,7 @@ describe("P5 area tools", () => {
     expect(result.matches.map((match) => [match.layerId, match.objectId])).toEqual([["W01", "linia-testowa"]]);
     await expect(relateAreas(config, { areaId: gminaAreaId })).rejects.toMatchObject({ code: "UNBOUNDED_SCAN_REFUSED" });
     await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A07"] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    await expect(relateAreas(config, { areaId: gminaAreaId, category: "administrative", layerIds: [] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
     await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A03"], validOn: "2026-02-31" })).rejects.toMatchObject({ code: "INVALID_INPUT" });
   });
 

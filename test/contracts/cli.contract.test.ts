@@ -86,7 +86,7 @@ describe("prg-mcp CLI contract", () => {
           policy: "read",
         },
         {
-          description: "Finds nearest PRG address points around an EPSG:2180 point using expanding R-tree candidates, exact distance and hard radius/candidate limits.",
+          description: "Finds nearest PRG address points around an EPSG:2180 point using spatial-index candidates, exact distance, a hard radius and a per-shard candidate cap.",
           name: "reverse_address",
           policy: "read",
         },
@@ -111,7 +111,7 @@ describe("prg-mcp CLI contract", () => {
           policy: "read",
         },
         {
-          description: "Returns installed PRG coverage by layer and scope; optionally checks source metadata without downloading datasets.",
+          description: "Returns local installed PRG coverage by layer and scope; remote metadata is checked only when a source-status probe is configured.",
           name: "source_status",
           policy: "read",
         },
@@ -174,6 +174,14 @@ describe("prg-mcp CLI contract", () => {
         insert into installed_coverage(layer_id, scope_type, scope_code, snapshot_id, completeness)
         values ('A03', 'country', 'PL', last_insert_rowid(), 'partial')
       `).run();
+      database.prepare(`
+        insert into snapshots(dataset_key, scope, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url, archive_year)
+        values ('archive:2024:A03', 'country:PL', '2026-06-24', '2026-06-24', 'archive', 1, 'schema', 'adapter', 'https://example.test', 2024)
+      `).run();
+      database.prepare(`
+        insert into installed_coverage(layer_id, dataset_key, archive_year, scope_type, scope_code, snapshot_id, completeness)
+        values ('A03', 'archive:2024:A03', 2024, 'country', 'PL', last_insert_rowid(), 'complete')
+      `).run();
     } finally {
       database.close();
     }
@@ -183,6 +191,16 @@ describe("prg-mcp CLI contract", () => {
       stderr: new MemoryWritable(),
       stdout: new MemoryWritable(),
     })).rejects.toThrow("No installed snapshot found for layer A03.");
+  });
+
+  it("reports missing catalog metadata for export without explicit snapshot", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-cli-missing-catalog-"));
+
+    await expect(runCli(["export", "--layer", "A03", "--id", "gmina"], {
+      env: { MCP_DATA_DIR: dataDir },
+      stderr: new MemoryWritable(),
+      stdout: new MemoryWritable(),
+    })).rejects.toThrow("No catalog metadata found; pass --snapshot-id or rebuild catalog.sqlite.");
   });
 
   it("shows setup estimate for the recommended administrative profile", async () => {

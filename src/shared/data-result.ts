@@ -49,7 +49,7 @@ export function createDataResultMetadata(
 
   return {
     coverage: {
-      complete: missingScopes.length === 0 && installedScopes.length > 0,
+      complete: requestedScopes !== undefined && missingScopes.length === 0 && installedScopes.length > 0,
       installedScopes,
       missingScopes,
     },

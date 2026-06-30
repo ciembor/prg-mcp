@@ -40,21 +40,14 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     }
 
     try {
-      const remainingCandidates = maxCandidates - results.length;
-      if (remainingCandidates <= 0) {
-        throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
-      }
+      const queryCandidateLimit = Math.min(maxCandidates, Math.min(limit, 100));
 
       let rows = isAddressRtreeComplete(database)
-        ? readRtreeCandidates(database, input.x, input.y, radiusMeters, remainingCandidates + 1)
+        ? readRtreeCandidates(database, input.x, input.y, radiusMeters, queryCandidateLimit)
         : [];
 
       if (rows.length === 0) {
-        rows = readTableCandidates(database, input.x, input.y, radiusMeters, remainingCandidates + 1);
-      }
-
-      if (rows.length > remainingCandidates) {
-        throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
+        rows = readTableCandidates(database, input.x, input.y, radiusMeters, queryCandidateLimit);
       }
 
       results.push(
@@ -68,7 +61,7 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
   }
 
   return {
-    addresses: limitGlobalCandidates(results, maxCandidates, limit),
+    addresses: limitGlobalCandidates(results, limit),
     point: [input.x, input.y],
     radiusMeters,
   };
@@ -112,7 +105,9 @@ function readRtreeCandidates(database: import("better-sqlite3").Database, x: num
           and addresses_rtree.min_y <= @maxY
           and addresses_rtree.max_y >= @minY
           and ((addresses.x - @x) * (addresses.x - @x) + (addresses.y - @y) * (addresses.y - @y)) <= @radiusSquared
-        order by addresses.object_id asc
+        order by
+          ((addresses.x - @x) * (addresses.x - @x) + (addresses.y - @y) * (addresses.y - @y)) asc,
+          addresses.object_id asc
         limit @queryCandidateLimit
       `)
       .all(candidateParameters(x, y, radiusMeters, limit)) as AddressRow[];
@@ -133,7 +128,9 @@ function readTableCandidates(database: import("better-sqlite3").Database, x: num
       where x between @minX and @maxX
         and y between @minY and @maxY
         and ((x - @x) * (x - @x) + (y - @y) * (y - @y)) <= @radiusSquared
-      order by object_id asc
+      order by
+        ((x - @x) * (x - @x) + (y - @y) * (y - @y)) asc,
+        object_id asc
       limit @queryCandidateLimit
     `)
     .all(candidateParameters(x, y, radiusMeters, limit)) as AddressRow[];
@@ -174,14 +171,9 @@ function isAddressRtreeComplete(database: import("better-sqlite3").Database): bo
 
 function limitGlobalCandidates(
   results: Array<AddressSummary & { distanceMeters: number }>,
-  maxCandidates: number,
   limit: number,
 ): readonly (AddressSummary & { readonly distanceMeters: number })[] {
   const sorted = results.sort((left, right) => left.distanceMeters - right.distanceMeters || left.objectId.localeCompare(right.objectId, "pl"));
-
-  if (sorted.length > maxCandidates) {
-    throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
-  }
 
   return sorted.slice(0, Math.min(limit, 100));
 }

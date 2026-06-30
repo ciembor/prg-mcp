@@ -122,7 +122,7 @@ export function createGetAddressTool(config: PrgConfig) {
 export function createReverseAddressTool(config: PrgConfig) {
   return defineZodTool({
     annotations: { readOnlyHint: true },
-    description: "Finds nearest PRG address points around an EPSG:2180 point using expanding R-tree candidates, exact distance and hard radius/candidate limits.",
+    description: "Finds nearest PRG address points around an EPSG:2180 point using spatial-index candidates, exact distance, a hard radius and a per-shard candidate cap.",
     handler: async (input) => {
       const result = await reverseAddress(config, input);
 

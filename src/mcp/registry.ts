@@ -1,5 +1,4 @@
 import { createCapabilityRegistry } from "@mcp-craftsman/core";
-import { loadRuntimeConfig } from "@mcp-craftsman/node";
 
 import {
   createGetAddressTool,
@@ -20,7 +19,7 @@ import { healthTool } from "../features/health/index.js";
 import { createListLayersTool } from "../features/list-layers/index.js";
 import { createServerStatusTool } from "../features/server-status/index.js";
 import { createSourceStatusTool, type SourceStatusProbe } from "../features/source-status/index.js";
-import { loadPrgConfig, type PrgConfig } from "../runtime/config.js";
+import type { PrgConfig } from "../runtime/config.js";
 
 export type RegistryServices = { readonly sourceStatusProbe?: SourceStatusProbe };
 
@@ -43,5 +42,3 @@ export function createRegistry(config: PrgConfig, services: RegistryServices = {
     createSourceStatusTool(config, services.sourceStatusProbe),
   ]);
 }
-
-export const registry = createRegistry(loadPrgConfig(loadRuntimeConfig({ appName: "prg-mcp" })));

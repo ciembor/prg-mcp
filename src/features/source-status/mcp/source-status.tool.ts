@@ -7,7 +7,7 @@ import { getSourceStatus, operationalSourceStates, type SourceStatusProbe } from
 export function createSourceStatusTool(config: PrgConfig, probe?: SourceStatusProbe) {
   return defineZodTool({
     annotations: { readOnlyHint: true },
-    description: "Returns installed PRG coverage by layer and scope; optionally checks source metadata without downloading datasets.",
+    description: "Returns local installed PRG coverage by layer and scope; remote metadata is checked only when a source-status probe is configured.",
     handler: async ({ checkRemote }) => {
       const status = await getSourceStatus(config, checkRemote, probe);
       return { structuredContent: { ...status, coverage: [...status.coverage], sources: [...status.sources] } };
