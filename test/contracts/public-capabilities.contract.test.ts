@@ -95,8 +95,8 @@ describe("public capability contracts", () => {
         source: {
           system: "PRG",
         },
-        syncedAt: null,
       });
+      expect(result.structuredContent, toolName).toHaveProperty("syncedAt");
       expect((result.structuredContent as { coverage: { installedScopes: string[] } }).coverage.installedScopes.length, toolName).toBeGreaterThan(0);
       expect((result.structuredContent as { source: { layerIds: string[] } }).source.layerIds.length, toolName).toBeGreaterThan(0);
     }
@@ -190,7 +190,21 @@ function createContractApp() {
 }
 
 function createAreaFixture(dataDir: string): void {
-  const { boundariesPath } = initializePrgDatabases({ addressShardCodes: ["02", "14"], dataDir });
+  const { boundariesPath, catalogPath } = initializePrgDatabases({ addressShardCodes: ["02", "14"], dataDir });
+  const catalog = new Database(catalogPath);
+  try {
+    catalog.prepare(`
+      insert into snapshots(id, dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
+      values (1, 'current:A03', 'country:PL', null, '', '2026-06-23', '2026-06-23', 'current', 1, 'schema', '1', 'https://example.test')
+    `).run();
+    catalog.prepare(`
+      insert into installed_coverage(layer_id,dataset_key,archive_year,scope_type,scope_code,snapshot_id,completeness)
+      values ('A03','current:A03',0,'country','PL',1,'complete')
+    `).run();
+  } finally {
+    catalog.close();
+  }
+
   const database = new Database(boundariesPath);
 
   try {

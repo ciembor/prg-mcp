@@ -367,10 +367,11 @@ force    przebuduj wskazane zakresy
 Profile planowania:
 
 ```text
-administrative  podstawowe granice administracyjne
-addresses       punkty adresowe i ulice dla wskazanych zakresow
-boundaries-full wszystkie warstwy graniczne PRG
-poland-full     pelna instalacja Polski, wymaga jawnego potwierdzenia w CLI
+administrative         podstawowe granice administracyjne
+administrative-history archiwalne granice administracyjne; wymaga --archive-year
+addresses              punkty adresowe i ulice dla wskazanych zakresow
+boundaries-full        wszystkie warstwy graniczne PRG
+poland-full            pelna instalacja Polski, wymaga jawnego potwierdzenia w CLI
 ```
 
 ### Obszary

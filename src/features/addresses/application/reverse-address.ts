@@ -22,7 +22,7 @@ const maximumRadiusMeters = 10_000;
 
 export async function reverseAddress(config: PrgConfig, input: ReverseAddressInput): Promise<ReverseAddressResult> {
   const radiusMeters = input.radiusMeters ?? 500;
-  const maxCandidates = Math.min(input.maxCandidates ?? 500, 5_000);
+  const maxCandidates = input.maxCandidates ?? 500;
   const limit = input.limit ?? 10;
 
   validateReverseAddressInput(input, radiusMeters, limit);
@@ -84,12 +84,12 @@ function validateReverseAddressInput(input: ReverseAddressInput, radiusMeters: n
     throw new AddressToolError("INVALID_INPUT", "reverse_address radiusMeters must be greater than 0.");
   }
 
-  if (!Number.isInteger(input.maxCandidates ?? 500) || (input.maxCandidates ?? 500) < 1) {
-    throw new AddressToolError("INVALID_INPUT", "reverse_address maxCandidates must be a positive integer.");
+  if (!Number.isInteger(input.maxCandidates ?? 500) || (input.maxCandidates ?? 500) < 1 || (input.maxCandidates ?? 500) > 5_000) {
+    throw new AddressToolError("INVALID_INPUT", "reverse_address maxCandidates must be an integer between 1 and 5000.");
   }
 
-  if (!Number.isInteger(limit) || limit < 1) {
-    throw new AddressToolError("INVALID_INPUT", "reverse_address limit must be a positive integer.");
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new AddressToolError("INVALID_INPUT", "reverse_address limit must be an integer between 1 and 100.");
   }
 
   if (input.voivodeshipCodes && input.voivodeshipCodes.length === 0) {

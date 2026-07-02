@@ -101,6 +101,99 @@ describe("data result coverage metadata", () => {
     });
   });
 
+  it("merges catalog coverage with local fallback pairs per layer and scope", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-data-result-merge-"));
+    const { catalogPath } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });
+    const database = new Database(catalogPath);
+    try {
+      const snapshot = database.prepare(`
+        insert into snapshots(dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
+        values ('current:A00','country:PL',null,'','2026-06-25','2026-06-25','abc',1,'schema','1','https://example.test')
+      `).run();
+      database.prepare(`
+        insert into installed_coverage(layer_id,dataset_key,archive_year,scope_type,scope_code,snapshot_id,completeness)
+        values ('A00','current:A00',0,'country','PL',?,'complete')
+      `).run(snapshot.lastInsertRowid);
+    } finally {
+      database.close();
+    }
+
+    expect(createDataResultMetadata(loadPrgConfig({
+      configDir: dataDir,
+      dataDir,
+      logLevel: "silent",
+      port: 0,
+      transport: "stdio",
+    }, {}), {
+      channels: ["wfs"],
+      fallbackCoverage: [{ layerId: "A01", scope: "country:PL" }],
+      layerIds: ["A00", "A01"],
+      requestedScopes: ["country:PL"],
+    })).toMatchObject({
+      coverage: {
+        complete: true,
+        installedScopes: ["country:PL"],
+        missingScopes: [],
+      },
+      datasetState: "installed",
+    });
+  });
+
+  it("returns empty metadata instead of failing when catalog tables are missing", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-data-result-broken-catalog-"));
+    const { catalogPath } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });
+    const database = new Database(catalogPath);
+    try {
+      database.prepare("drop table installed_coverage").run();
+    } finally {
+      database.close();
+    }
+
+    expect(createDataResultMetadata(loadPrgConfig({
+      configDir: dataDir,
+      dataDir,
+      logLevel: "silent",
+      port: 0,
+      transport: "stdio",
+    }, {}), {
+      channels: ["wfs"],
+      layerIds: ["A00"],
+      requestedScopes: ["country:PL"],
+    })).toMatchObject({
+      coverage: {
+        complete: false,
+        installedScopes: [],
+        missingScopes: ["country:PL"],
+      },
+      datasetState: "not_installed",
+    });
+  });
+
+  it("marks explicit snapshot metadata as unknown when the catalog has no matching coverage", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-data-result-snapshot-unknown-"));
+
+    expect(createDataResultMetadata(loadPrgConfig({
+      configDir: dataDir,
+      dataDir,
+      logLevel: "silent",
+      port: 0,
+      transport: "stdio",
+    }, {}), {
+      channels: ["wfs"],
+      fallbackCoverage: [{ layerId: "A00", scope: "country:PL" }],
+      layerIds: ["A00"],
+      requestedScopes: ["country:PL"],
+      snapshotIds: [123],
+    })).toMatchObject({
+      coverage: {
+        complete: false,
+        installedScopes: [],
+        missingScopes: ["country:PL"],
+      },
+      datasetState: "unknown",
+    });
+  });
+
   it("does not mark coverage complete without explicit requested scopes", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "prg-data-result-no-request-"));
 

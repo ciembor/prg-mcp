@@ -111,6 +111,9 @@ describe("P5 area tools", () => {
     await expect(getAreaGeometry(config, { areaId: gminaAreaId, maxVertices: 4, toleranceMeters: 0 })).rejects.toMatchObject({
       code: "VERTEX_LIMIT_EXCEEDED",
     });
+    await expect(getAreaGeometry(config, { areaId: gminaAreaId, maxVertices: 100_001 })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
   });
 
   it("does not treat an empty initialized boundaries database as installed data", async () => {
@@ -136,6 +139,9 @@ describe("P5 area tools", () => {
     ]);
     await expect(locatePoint(config, { category: "administrative", maxCandidates: 2, snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
       code: "COST_LIMIT_EXCEEDED",
+    });
+    await expect(locatePoint(config, { category: "administrative", maxCandidates: 10_001, snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
     });
     await expect(locatePoint(config, { layerIds: ["A01", "A02", "A03"], maxCandidates: 3, snapshotId: 1, x: 10, y: 5 })).resolves.toMatchObject({
       matches: [{ layerId: "A01" }, { layerId: "A02" }, { layerId: "A03" }],
@@ -169,6 +175,18 @@ describe("P5 area tools", () => {
     expect(result.source.layerIds).not.toContain("W06");
   });
 
+  it("reports unknown metadata for area snapshots missing from the catalog", async () => {
+    const { config, gminaAreaId } = await createAreaFixture();
+
+    const result = (await callTool(createApp(config), "get_area", { areaId: gminaAreaId })).structuredContent as {
+      datasetState: string;
+      coverage: { installedScopes: string[] };
+    };
+
+    expect(result.datasetState).toBe("unknown");
+    expect(result.coverage.installedScopes).toEqual([]);
+  });
+
   it("relates bounded surfaces and lines and rejects unbounded scans at the MCP-schema level", async () => {
     const { config, gminaAreaId } = await createAreaFixture();
 
@@ -180,6 +198,7 @@ describe("P5 area tools", () => {
     await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A07"] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
     await expect(relateAreas(config, { areaId: gminaAreaId, category: "administrative", layerIds: [] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
     await expect(relateAreas(config, { areaId: gminaAreaId, category: "unknown" as never })).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A03"], maxCandidates: 10_001 })).rejects.toMatchObject({ code: "INVALID_INPUT" });
     await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A03"], validOn: "2026-02-31" })).rejects.toMatchObject({ code: "INVALID_INPUT" });
   });
 

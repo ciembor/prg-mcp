@@ -1,3 +1,5 @@
+import { join } from "node:path";
+
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
@@ -6,7 +8,7 @@ import { readAreaById, toAreaSummary, toAreaWithGeometry, type AreaSummary, type
 
 export async function getArea(config: PrgConfig, areaId: string): Promise<AreaSummary> {
   assertDataInstalled(databaseTableHasRows(config, "boundaries.sqlite", "areas"), "PRG boundary data is not installed.", boundaryRecoveryAction);
-  const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
+  const database = new Database(join(config.dataDir, "boundaries.sqlite"), { readonly: true });
 
   try {
     return toAreaSummary(readAreaById(database, areaId));
@@ -17,7 +19,7 @@ export async function getArea(config: PrgConfig, areaId: string): Promise<AreaSu
 
 export async function getAreaWithGeometry(config: PrgConfig, areaId: string): Promise<AreaWithGeometry> {
   assertDataInstalled(databaseTableHasRows(config, "boundaries.sqlite", "areas"), "PRG boundary data is not installed.", boundaryRecoveryAction);
-  const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
+  const database = new Database(join(config.dataDir, "boundaries.sqlite"), { readonly: true });
 
   try {
     return toAreaWithGeometry(readAreaById(database, areaId));

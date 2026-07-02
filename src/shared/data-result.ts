@@ -38,14 +38,17 @@ export function createDataResultMetadata(
     readonly fallbackScopes?: readonly string[];
     readonly datasetKeys?: readonly string[];
     readonly archiveYear?: number;
+    readonly snapshotIds?: readonly number[];
     readonly requestedScopes?: readonly string[];
   },
 ): DataResultMetadata {
-  const coverage = readInstalledCoverage(config, input.layerIds, { archiveYear: input.archiveYear, datasetKeys: input.datasetKeys });
+  const coverage = readInstalledCoverage(config, input.layerIds, { archiveYear: input.archiveYear, datasetKeys: input.datasetKeys, snapshotIds: input.snapshotIds });
   const requestedScopes = input.requestedScopes && input.requestedScopes.length > 0 ? input.requestedScopes : undefined;
-  const coveragePairs = coverage.pairs.length > 0 ? coverage.pairs : (input.fallbackCoverage ?? fallbackCoveragePairs(input.layerIds, input.fallbackScopes ?? []));
+  const fallbackPairs = input.snapshotIds && input.snapshotIds.length > 0 ? [] : (input.fallbackCoverage ?? fallbackCoveragePairs(input.layerIds, input.fallbackScopes ?? []));
+  const coveragePairs = mergeCoveragePairs(coverage.pairs, fallbackPairs);
   const installedScopes = [...new Set(coveragePairs.map((pair) => pair.scope))].sort();
   const missingScopes = requestedScopes ? missingCoverageScopes(input.layerIds, requestedScopes, coveragePairs) : [];
+  const noKnownSnapshotCoverage = input.snapshotIds !== undefined && input.snapshotIds.length > 0 && coveragePairs.length === 0;
 
   return {
     coverage: {
@@ -53,7 +56,7 @@ export function createDataResultMetadata(
       installedScopes,
       missingScopes,
     },
-    datasetState: installedScopes.length > 0 ? "installed" : "not_installed",
+    datasetState: datasetState(installedScopes, noKnownSnapshotCoverage),
     source: {
       channels: [...new Set(input.channels)].sort(),
       layerIds: [...new Set(input.layerIds)].sort(),
@@ -102,7 +105,7 @@ export function isMissingSqliteTableError(error: unknown): boolean {
 function readInstalledCoverage(
   config: PrgConfig,
   layerIds: readonly string[],
-  filters: { readonly datasetKeys?: readonly string[]; readonly archiveYear?: number } = {},
+  filters: { readonly datasetKeys?: readonly string[]; readonly archiveYear?: number; readonly snapshotIds?: readonly number[] } = {},
 ): { readonly pairs: readonly CoveragePair[]; readonly syncedAt: string | null } {
   if (layerIds.length === 0) return { pairs: [], syncedAt: null };
 
@@ -113,13 +116,16 @@ function readInstalledCoverage(
   try {
     const layerIdSet = new Set(layerIds);
     const datasetKeySet = filters.datasetKeys ? new Set(filters.datasetKeys) : undefined;
+    const snapshotIdSet = filters.snapshotIds ? new Set(filters.snapshotIds) : undefined;
     const rows = (database.prepare(`
-      select c.layer_id as layerId, c.dataset_key as datasetKey, c.archive_year as archiveYear, c.scope_type as scopeType, c.scope_code as scopeCode, c.completeness as completeness, s.downloaded_at as downloadedAt
+      select c.layer_id as layerId, c.dataset_key as datasetKey, c.archive_year as archiveYear, c.snapshot_id as snapshotId,
+             c.scope_type as scopeType, c.scope_code as scopeCode, c.completeness as completeness, s.downloaded_at as downloadedAt
       from installed_coverage c join snapshots s on s.id = c.snapshot_id
       order by c.scope_type, c.scope_code, s.downloaded_at desc
     `).all() as Array<{
       archiveYear: number;
       datasetKey: string;
+      snapshotId: number;
       layerId: string;
       scopeType: string;
       scopeCode: string;
@@ -129,6 +135,7 @@ function readInstalledCoverage(
       layerIdSet.has(row.layerId)
       && row.completeness === "complete"
       && (!datasetKeySet || datasetKeySet.has(row.datasetKey))
+      && (!snapshotIdSet || snapshotIdSet.has(row.snapshotId))
       && (filters.archiveYear === undefined || row.archiveYear === filters.archiveYear),
     );
 
@@ -136,6 +143,12 @@ function readInstalledCoverage(
       pairs: rows.map((row) => ({ layerId: row.layerId, scope: `${row.scopeType}:${row.scopeCode}` })),
       syncedAt: rows.map((row) => row.downloadedAt).sort().at(-1) ?? null,
     };
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return { pairs: [], syncedAt: null };
+    }
+
+    throw error;
   } finally {
     database.close();
   }
@@ -148,6 +161,23 @@ type CoveragePair = {
 
 function fallbackCoveragePairs(layerIds: readonly string[], scopes: readonly string[]): readonly CoveragePair[] {
   return layerIds.flatMap((layerId) => scopes.map((scope) => ({ layerId, scope })));
+}
+
+function datasetState(installedScopes: readonly string[], noKnownSnapshotCoverage: boolean): DataResultMetadata["datasetState"] {
+  if (installedScopes.length > 0) {
+    return "installed";
+  }
+
+  return noKnownSnapshotCoverage ? "unknown" : "not_installed";
+}
+
+function mergeCoveragePairs(left: readonly CoveragePair[], right: readonly CoveragePair[]): readonly CoveragePair[] {
+  const pairs = new Map<string, CoveragePair>();
+  for (const pair of [...left, ...right]) {
+    pairs.set(coveragePairKey(pair.layerId, pair.scope), pair);
+  }
+
+  return [...pairs.values()];
 }
 
 function missingCoverageScopes(layerIds: readonly string[], requestedScopes: readonly string[], installedPairs: readonly CoveragePair[]): string[] {

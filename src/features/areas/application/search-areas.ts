@@ -36,7 +36,7 @@ export async function searchAreas(config: PrgConfig, input: SearchAreasInput): P
     "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
   );
 
-  const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
+  const database = new Database(join(config.dataDir, "boundaries.sqlite"), { readonly: true });
 
   try {
     const currentSnapshots = input.snapshotId === undefined ? readCurrentAreaSnapshots(config, layerIdsForInput(input)) : [];

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type { SnapshotMetadata, SourceProbe, SyncPlan, SyncTarget } from "../domain/sync-model.js";
 import { validateSyncDataset, type SyncRecord } from "../domain/sync-validation.js";
-import { isFresh, shouldSynchronize } from "./source-status.js";
+import { shouldSynchronize } from "./source-status.js";
 
 export type DownloadedSyncDataset = {
   readonly bytes: Uint8Array;
@@ -70,11 +70,7 @@ async function synchronizeTarget(plan: SyncPlan, target: SyncTarget, dependencie
     const conditional = previous && !target.archiveYear ? { etag: previous.etag, lastModified: previous.lastModified } : undefined;
     const probe = target.archiveYear ? undefined : await dependencies.source.probe(target, conditional);
     assertProbeUsable(plan.mode, probe);
-    if (probe && shouldRefreshOnly(plan.mode, previous, probe, dependencies.now)) {
-      await dependencies.snapshots.save(refreshMetadata(previous, probe, dependencies.now), target);
-      return { datasetKey: target.datasetKey, scope, status: "unchanged" };
-    }
-    if (isUnchangedArchive(target, previous) || !shouldSynchronize(plan.mode, previous, probe)) {
+    if (isUnchangedArchive(target, previous) || !shouldSynchronize(plan.mode, previous, probe, (dependencies.now ?? (() => new Date()))())) {
       return { datasetKey: target.datasetKey, scope, status: "unchanged" };
     }
     const dataset = await dependencies.source.download(target, conditional);
@@ -103,31 +99,6 @@ function createMetadata(target: SyncTarget, scope: string, dataset: DownloadedSy
     datasetKey: target.datasetKey, downloadedAt: now, etag: dataset.etag, lastModified: dataset.lastModified,
     recordCount: dataset.records.length, schemaFingerprint: dataset.schemaFingerprint, scope,
     sha256: createHash("sha256").update(dataset.bytes).digest("hex"), sourceUrl: dataset.sourceUrl, stateDate: dataset.stateDate,
-  };
-}
-
-function shouldRefreshOnly(
-  mode: SyncPlan["mode"],
-  previous: SnapshotMetadata | undefined,
-  probe: SourceProbe | undefined,
-  nowProvider?: () => Date,
-): previous is SnapshotMetadata {
-  if (mode !== "stale" || !previous || !probe || probe.status !== "available") {
-    return false;
-  }
-
-  return !isFresh(previous, (nowProvider ?? (() => new Date()))());
-}
-
-function refreshMetadata(previous: SnapshotMetadata, probe: SourceProbe, nowProvider?: () => Date): SnapshotMetadata {
-  const now = (nowProvider ?? (() => new Date()))().toISOString();
-  return {
-    ...previous,
-    checkedAt: now,
-    etag: probe.etag ?? previous.etag,
-    lastModified: probe.lastModified ?? previous.lastModified,
-    sourceUrl: probe.sourceUrl,
-    stateDate: probe.stateDate ?? previous.stateDate,
   };
 }
 

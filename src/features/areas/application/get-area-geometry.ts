@@ -23,7 +23,7 @@ export async function getAreaGeometry(
 ): Promise<AreaGeometryResult> {
   validateGetAreaGeometryInput(input);
   const area = await getAreaWithGeometry(config, input.areaId);
-  const maxVertices = Math.min(input.maxVertices ?? 10_000, 100_000);
+  const maxVertices = input.maxVertices ?? 10_000;
   const tolerance = input.toleranceMeters ?? 0;
   const geometry = simplifyToLimit(area.geometry, tolerance, maxVertices);
   const originalVertexCount = vertexCount(area.geometry);
@@ -41,8 +41,8 @@ export async function getAreaGeometry(
 }
 
 function validateGetAreaGeometryInput(input: { readonly toleranceMeters?: number; readonly maxVertices?: number }): void {
-  if (input.maxVertices !== undefined && (!Number.isInteger(input.maxVertices) || input.maxVertices < 4)) {
-    throw new AreaToolError("INVALID_INPUT", "get_area_geometry maxVertices must be an integer of at least 4.");
+  if (input.maxVertices !== undefined && (!Number.isInteger(input.maxVertices) || input.maxVertices < 4 || input.maxVertices > 100_000)) {
+    throw new AreaToolError("INVALID_INPUT", "get_area_geometry maxVertices must be an integer between 4 and 100000.");
   }
 
   if (input.toleranceMeters !== undefined && (!Number.isFinite(input.toleranceMeters) || input.toleranceMeters < 0)) {
@@ -77,7 +77,7 @@ function simplifyToLimit(geometry: PrgGeometry, tolerance: number, maxVertices: 
   try {
     return validateGeoJsonGeometry(simplified);
   } catch (error) {
-    if (error instanceof AreaToolError && error.code === "INVALID_INPUT" && tolerance > 0) {
+    if (error instanceof AreaToolError && error.code === "INVALID_INPUT" && (tolerance > 0 || vertexCount(validGeometry) > maxVertices)) {
       throw new AreaToolError("VERTEX_LIMIT_EXCEEDED", `Geometry could not be simplified to a valid shape within limit ${maxVertices}.`);
     }
 

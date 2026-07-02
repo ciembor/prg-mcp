@@ -1,3 +1,5 @@
+import { join } from "node:path";
+
 import { defineZodTool } from "@mcp-craftsman/zod";
 import Database from "better-sqlite3";
 import * as z from "zod";
@@ -92,7 +94,7 @@ export function createGetAreaTool(config: PrgConfig) {
     description: "Returns one PRG area record with mapped common attributes and raw source attributes, without full geometry.",
     handler: async ({ areaId }) => {
       const area = await getArea(config, areaId);
-      return { structuredContent: { area: toMutableAreaSummary(area), ...areaMetadata(config, { layerId: area.layerId }) } };
+      return { structuredContent: { area: toMutableAreaSummary(area), ...areaMetadata(config, { layerId: area.layerId, snapshotId: area.snapshotId }) } };
     },
     input: z.object({ areaId: z.string().min(1) }),
     name: "get_area",
@@ -107,7 +109,7 @@ export function createGetAreaGeometryTool(config: PrgConfig) {
     description: "Returns PRG area geometry as GeoJSON in EPSG:2180, with optional simplification and vertex limit.",
     handler: async (input) => {
       const result = await getAreaGeometry(config, input);
-      return { structuredContent: { ...result, ...areaMetadata(config, { layerId: result.layerId }) } };
+      return { structuredContent: { ...result, ...areaMetadata(config, { layerId: result.layerId, snapshotId: result.snapshotId }) } };
     },
     input: z.object({
       areaId: z.string().min(1),
@@ -170,7 +172,7 @@ export function createRelateAreasTool(config: PrgConfig) {
         structuredContent: {
           matches: result.matches.map(toMutableAreaSummary),
           relation: result.relation,
-          ...areaMetadata(config, input),
+          ...areaMetadata(config, { ...input, snapshotId: result.source.snapshotId }),
           sourceArea: toMutableAreaSummary(result.source),
         },
       };
@@ -196,7 +198,7 @@ const dataResultMetadataShape = dataResultMetadataSchema.shape;
 
 function areaMetadata(
   config: PrgConfig,
-  input: { readonly layerId?: string; readonly layerIds?: readonly string[]; readonly category?: string; readonly polygonOnly?: boolean },
+  input: { readonly layerId?: string; readonly layerIds?: readonly string[]; readonly category?: string; readonly polygonOnly?: boolean; readonly snapshotId?: number },
 ) {
   let layerIds: readonly string[];
 
@@ -216,10 +218,11 @@ function areaMetadata(
 
   return createDataResultMetadata(config, {
     channels,
-    datasetKeys: layerIds.map((layerId) => `current:${layerId}`),
+    datasetKeys: input.snapshotId === undefined ? layerIds.map((layerId) => `current:${layerId}`) : undefined,
     fallbackCoverage,
     layerIds,
     requestedScopes: ["country:PL"],
+    snapshotIds: input.snapshotId === undefined ? undefined : [input.snapshotId],
   });
 }
 
@@ -239,7 +242,7 @@ function fallbackAreaCoverage(config: PrgConfig, layerIds: readonly string[]): A
 }
 
 function listInstalledAreaLayerIds(config: PrgConfig): readonly string[] {
-  const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
+  const database = new Database(join(config.dataDir, "boundaries.sqlite"), { readonly: true });
   try {
     return (database.prepare("select distinct layer_id as layerId from areas order by layer_id").all() as Array<{ layerId: string }>)
       .map((row) => row.layerId);

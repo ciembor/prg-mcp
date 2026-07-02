@@ -34,7 +34,7 @@ export async function listLayers(config: PrgConfig): Promise<readonly ListedLaye
     const recordCount = counts.get(layer.layerId) ?? 0;
     return {
       ...layer,
-      available: installedScopes.length > 0 || (!coverage.hasCatalogCoverage && recordCount > 0),
+      available: installedScopes.length > 0 || (!coverage.layerIdsWithCatalogCoverage.has(layer.layerId) && recordCount > 0),
       installedScopes,
       recordCount,
       usage: usageByCategory[layer.category],
@@ -43,13 +43,13 @@ export async function listLayers(config: PrgConfig): Promise<readonly ListedLaye
 }
 
 type LayerCoverageIndex = {
-  readonly hasCatalogCoverage: boolean;
+  readonly layerIdsWithCatalogCoverage: ReadonlySet<string>;
   readonly scopes: ReadonlyMap<string, readonly string[]>;
 };
 
 async function readCoverage(dataDir: string): Promise<LayerCoverageIndex> {
   const path = join(dataDir, "catalog.sqlite");
-  if (!(await exists(path))) return { hasCatalogCoverage: false, scopes: new Map() };
+  if (!(await exists(path))) return { layerIdsWithCatalogCoverage: new Set(), scopes: new Map() };
   const rows = readSafely(() => withReadonlyDatabase(path, (database) => database.prepare(
     `
       select distinct layer_id as layerId, scope_type as scopeType, scope_code as scopeCode
@@ -60,10 +60,10 @@ async function readCoverage(dataDir: string): Promise<LayerCoverageIndex> {
       order by layer_id, scope_type, scope_code
     `,
   ).all() as { layerId: string; scopeType: string; scopeCode: string }[]));
-  if (!rows) return { hasCatalogCoverage: false, scopes: new Map() };
+  if (!rows) return { layerIdsWithCatalogCoverage: new Set(), scopes: new Map() };
   const result = new Map<string, string[]>();
   for (const row of rows) result.set(row.layerId, [...(result.get(row.layerId) ?? []), `${row.scopeType}:${row.scopeCode}`]);
-  return { hasCatalogCoverage: true, scopes: result };
+  return { layerIdsWithCatalogCoverage: new Set(rows.map((row) => row.layerId)), scopes: result };
 }
 
 async function readCounts(dataDir: string): Promise<ReadonlyMap<string, number>> {

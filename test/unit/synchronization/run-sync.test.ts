@@ -87,10 +87,19 @@ describe("synchronization orchestration", () => {
     expect(probe).not.toHaveBeenCalled();
   });
 
-  it("refreshes stale unchanged snapshots without downloading the dataset", async () => {
+  it("downloads stale unchanged snapshots instead of only refreshing metadata", async () => {
     const plan = planSync({ availableDiskBytes: 10 ** 12, layerIds: ["A00"], mode: "stale" });
     const saved: SnapshotMetadata[] = [];
     const stage = vi.fn(async (target) => ({ id: target.layer.layerId, target }));
+    const download = vi.fn(async (target) => ({
+      adapterVersion: "wfs-1",
+      bytes: new Uint8Array([4, 5, 6]),
+      etag: "etag-1",
+      lastModified: "Mon, 22 Jun 2026 00:00:00 GMT",
+      records: [{ bbox: [100_000, 100_000, 200_000, 200_000] as const, crs: "EPSG:2180" as const, objectId: target.layer.layerId, recordType: "area" as const }],
+      schemaFingerprint: "schema",
+      sourceUrl: "https://example.test/current",
+    }));
     const result = await runSyncPlan(plan, {
       publisher: {
         publish: async () => undefined,
@@ -106,7 +115,7 @@ describe("synchronization orchestration", () => {
         save: async (metadata) => { saved.push(metadata); },
       },
       source: {
-        download: async () => { throw new Error("download should not run"); },
+        download,
         probe: async () => ({
           checkedAt: "2026-06-23T00:00:00.000Z",
           etag: "etag-1",
@@ -118,12 +127,13 @@ describe("synchronization orchestration", () => {
       now: () => new Date("2026-06-23T00:00:00.000Z"),
     });
 
-    expect(result.targets).toEqual([expect.objectContaining({ status: "unchanged" })]);
-    expect(stage).not.toHaveBeenCalled();
+    expect(result.targets).toEqual([expect.objectContaining({ recordCount: 1, status: "published" })]);
+    expect(download).toHaveBeenCalledTimes(1);
+    expect(stage).toHaveBeenCalledTimes(1);
     expect(saved).toEqual([
       expect.objectContaining({
         checkedAt: "2026-06-23T00:00:00.000Z",
-        downloadedAt: "2026-06-20T00:00:00.000Z",
+        downloadedAt: "2026-06-23T00:00:00.000Z",
         sourceUrl: "https://example.test/current",
       }),
     ]);

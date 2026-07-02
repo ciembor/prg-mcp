@@ -125,6 +125,12 @@ describe("P6 address tools", () => {
     });
     await expect(reverseAddress(config, { radiusMeters: 20, voivodeshipCodes: ["14"], x: 1, y: 1 })).resolves.toMatchObject({ addresses: [] });
     await expect(reverseAddress(config, { radiusMeters: 10_001, x: 1, y: 1 })).rejects.toMatchObject({ code: "RADIUS_LIMIT_EXCEEDED" });
+    await expect(reverseAddress(config, { maxCandidates: 5_001, radiusMeters: 20, voivodeshipCodes: ["14"], x: 637807, y: 486708 })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
+    await expect(reverseAddress(config, { limit: 101, radiusMeters: 20, voivodeshipCodes: ["14"], x: 637807, y: 486708 })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
 
     const lodz = new Database(join(config.dataDir, "addresses-10.sqlite"));
     const mazowieckie = new Database(join(config.dataDir, "addresses-14.sqlite"));

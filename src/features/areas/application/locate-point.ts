@@ -39,10 +39,10 @@ export async function locatePoint(config: PrgConfig, input: LocatePointInput): P
     "PRG boundary data or spatial index is not installed.",
     "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
   );
-  const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
+  const database = new Database(join(config.dataDir, "boundaries.sqlite"), { readonly: true });
 
   try {
-    const maxCandidates = Math.min(input.maxCandidates ?? 2_000, 10_000);
+    const maxCandidates = input.maxCandidates ?? 2_000;
     const currentSnapshots = input.snapshotId === undefined ? readCurrentAreaSnapshots(config, layerIdsForInput(input)) : [];
     installCurrentSnapshotTable(database, currentSnapshots);
     const count = database
@@ -120,12 +120,12 @@ function validateLocatePointInput(input: LocatePointInput): void {
     throw new AreaToolError("INVALID_INPUT", "locate_point coordinates must be finite numbers.");
   }
 
-  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
-    throw new AreaToolError("INVALID_INPUT", "locate_point limit must be a positive integer.");
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100)) {
+    throw new AreaToolError("INVALID_INPUT", "locate_point limit must be an integer between 1 and 100.");
   }
 
-  if (input.maxCandidates !== undefined && (!Number.isInteger(input.maxCandidates) || input.maxCandidates < 1)) {
-    throw new AreaToolError("INVALID_INPUT", "locate_point maxCandidates must be a positive integer.");
+  if (input.maxCandidates !== undefined && (!Number.isInteger(input.maxCandidates) || input.maxCandidates < 1 || input.maxCandidates > 10_000)) {
+    throw new AreaToolError("INVALID_INPUT", "locate_point maxCandidates must be an integer between 1 and 10000.");
   }
 
   assertValidOn("locate_point", input.validOn);

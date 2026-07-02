@@ -1,3 +1,5 @@
+import { join } from "node:path";
+
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
@@ -30,7 +32,7 @@ export async function relateAreas(config: PrgConfig, input: RelateAreasInput): P
     "PRG boundary data or spatial index is not installed.",
     "Data synchronization is not packaged in this build; prepare PRG boundary data with a configured import pipeline for profile administrative.",
   );
-  const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
+  const database = new Database(join(config.dataDir, "boundaries.sqlite"), { readonly: true });
 
   try {
     const sourceRow = readAreaById(database, input.areaId);
@@ -40,7 +42,7 @@ export async function relateAreas(config: PrgConfig, input: RelateAreasInput): P
         `relate_areas snapshotId ${input.snapshotId} does not match source area snapshot ${sourceRow.snapshot_id}.`,
       );
     }
-    const maxCandidates = Math.min(input.maxCandidates ?? 1_000, 10_000);
+    const maxCandidates = input.maxCandidates ?? 1_000;
     const count = database
       .prepare(`
         select count(*) as count
@@ -103,12 +105,12 @@ function validateRelateAreasInput(input: RelateAreasInput): void {
     throw new AreaToolError("UNBOUNDED_SCAN_REFUSED", "relate_areas requires layerIds or category to avoid an unbounded relation scan.");
   }
 
-  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
-    throw new AreaToolError("INVALID_INPUT", "relate_areas limit must be a positive integer.");
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100)) {
+    throw new AreaToolError("INVALID_INPUT", "relate_areas limit must be an integer between 1 and 100.");
   }
 
-  if (input.maxCandidates !== undefined && (!Number.isInteger(input.maxCandidates) || input.maxCandidates < 1)) {
-    throw new AreaToolError("INVALID_INPUT", "relate_areas maxCandidates must be a positive integer.");
+  if (input.maxCandidates !== undefined && (!Number.isInteger(input.maxCandidates) || input.maxCandidates < 1 || input.maxCandidates > 10_000)) {
+    throw new AreaToolError("INVALID_INPUT", "relate_areas maxCandidates must be an integer between 1 and 10000.");
   }
 
   assertValidOn("relate_areas", input.validOn);

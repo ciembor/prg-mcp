@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { gunzipSync } from "node:zlib";
 
 const execFileAsync = promisify(execFile);
 const root = new URL("..", import.meta.url);
@@ -17,8 +18,7 @@ try {
   await execFileAsync("pnpm", ["pack", "--pack-destination", workspace], { cwd: root });
   const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
   const tarball = join(workspace, `${packageJson.name}-${packageJson.version}.tgz`);
-  const { stdout: tarballListing } = await execFileAsync("tar", ["-tzf", tarball]);
-  const packedFiles = new Set(tarballListing.trim().split("\n").map((line) => line.replace(/^package\//u, "")));
+  const packedFiles = await listPackedFiles(tarball);
   for (const requiredFile of ["dist/cli.js", "README.md", "LICENSE", "NOTICE.md", "docs/tutorial.md", "docs/provenance.md", "docs/layer-coverage.md"]) {
     if (!packedFiles.has(requiredFile)) throw new Error(`Package smoke missing ${requiredFile}`);
   }
@@ -48,4 +48,30 @@ try {
   }
 } finally {
   await rm(workspace, { force: true, recursive: true });
+}
+
+async function listPackedFiles(tarball) {
+  const bytes = gunzipSync(await readFile(tarball));
+  const files = new Set();
+  let offset = 0;
+
+  while (offset + 512 <= bytes.length) {
+    const header = bytes.subarray(offset, offset + 512);
+    if (header.every((value) => value === 0)) break;
+
+    const name = readTarString(header, 0, 100);
+    const prefix = readTarString(header, 345, 155);
+    const size = Number.parseInt(readTarString(header, 124, 12).trim() || "0", 8);
+    const path = [prefix, name].filter(Boolean).join("/").replace(/^package\//u, "");
+    if (path) files.add(path);
+
+    offset += 512 + Math.ceil(size / 512) * 512;
+  }
+
+  return files;
+}
+
+function readTarString(header, start, length) {
+  const end = header.indexOf(0, start);
+  return header.subarray(start, end === -1 || end > start + length ? start + length : end).toString("utf8");
 }
