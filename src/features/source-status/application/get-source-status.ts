@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
 import { isMissingSqliteTableError } from "../../../shared/data-result.js";
+import { prgVoivodeshipCodes } from "../../persistence/index.js";
 import { listPrgLayers } from "../../source-catalog/index.js";
 
 export const operationalSourceStates = ["available", "changed", "unavailable", "schema_changed", "unknown"] as const;
@@ -33,21 +34,30 @@ export type SourceStatusProbe = () => Promise<readonly { readonly datasetKey: st
 
 export async function getSourceStatus(config: PrgConfig, checkRemote: boolean, probe?: SourceStatusProbe): Promise<SourceStatusResult> {
   const coverage = await readCoverage(join(config.dataDir, "catalog.sqlite"));
-  const sources = checkRemote && probe ? await probe() : localSourceStates(coverage);
+  const sources = await sourceStates(coverage, checkRemote, probe);
   const checkedRemote = checkRemote && probe !== undefined;
   const currentCoverage = coverage.filter(isCompleteCurrentCoverage);
   const installedLayerCount = new Set(currentCoverage.map((item) => item.layerId)).size;
+  const installedPairs = new Set(currentCoverage.map(coveragePairKey));
   return {
     checkedRemote,
-    completeForFullCatalog: installedLayerCount === listPrgLayers().length,
+    completeForFullCatalog: requiredFullCatalogPairs().every((pair) => installedPairs.has(pair)),
     coverage,
-    installedCoveragePairCount: new Set(currentCoverage.map((item) => `${item.layerId}:${item.scopeType}:${item.scopeCode}`)).size,
+    installedCoveragePairCount: installedPairs.size,
     installedLayerCount,
     remoteReason: checkRemote && !probe ? "Remote source status probe is not configured in this build." : undefined,
     remoteStatus: remoteStatus(checkRemote, checkedRemote),
     sources,
     totalLayerCount: listPrgLayers().length,
   };
+}
+
+async function sourceStates(coverage: readonly CoverageStatus[], checkRemote: boolean, probe: SourceStatusProbe | undefined): Promise<SourceStatusResult["sources"]> {
+  if (!checkRemote) {
+    return localSourceStates(coverage);
+  }
+
+  return probe ? probe() : [];
 }
 
 function remoteStatus(checkRemote: boolean, checkedRemote: boolean): SourceStatusResult["remoteStatus"] {
@@ -91,6 +101,20 @@ function localSourceStates(coverage: readonly CoverageStatus[]): SourceStatusRes
 
 function isCompleteCurrentCoverage(item: CoverageStatus): boolean {
   return item.completeness === "complete" && item.datasetKey === `current:${item.layerId}`;
+}
+
+function requiredFullCatalogPairs(): readonly string[] {
+  return listPrgLayers().flatMap((layer) => {
+    if (layer.sourceChannel === "address-package") {
+      return prgVoivodeshipCodes.map((code) => `${layer.layerId}:voivodeship:${code}`);
+    }
+
+    return [`${layer.layerId}:country:PL`];
+  });
+}
+
+function coveragePairKey(item: CoverageStatus): string {
+  return `${item.layerId}:${item.scopeType}:${item.scopeCode}`;
 }
 
 async function exists(path: string): Promise<boolean> {

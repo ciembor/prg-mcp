@@ -4,7 +4,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import { assertDataInstalled, databaseTableHasRows } from "../../../shared/data-result.js";
+import { assertDataInstalled, databaseTableHasRows, isMissingSqliteTableError } from "../../../shared/data-result.js";
 import { decodeWkb } from "../../spatial/index.js";
 import { pointCoveredByPolygon } from "../../spatial/infrastructure/turf/geometry-predicates.js";
 import type { MultiPolygonGeometry, PolygonGeometry } from "../../spatial/index.js";
@@ -44,6 +44,9 @@ export async function locatePoint(config: PrgConfig, input: LocatePointInput): P
   try {
     const maxCandidates = input.maxCandidates ?? 2_000;
     const currentSnapshots = input.snapshotId === undefined ? readCurrentAreaSnapshots(config, layerIdsForInput(input)) : [];
+    if (input.snapshotId === undefined && currentSnapshots.length === 0) {
+      return { matches: [], point: [input.x, input.y] };
+    }
     installCurrentSnapshotTable(database, currentSnapshots);
     const count = database
       .prepare(`
@@ -110,6 +113,12 @@ export async function locatePoint(config: PrgConfig, input: LocatePointInput): P
       .map(toAreaSummary);
 
     return { matches, point: [input.x, input.y] };
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return { matches: [], point: [input.x, input.y] };
+    }
+
+    throw error;
   } finally {
     database.close();
   }
@@ -144,7 +153,7 @@ function parameters(input: LocatePointInput, currentSnapshots: readonly AreaCurr
     polygonLayerIdsCsv: polygonLayerIds().join(","),
     snapshotId: input.snapshotId ?? null,
     useCurrentSnapshotTable: currentSnapshots.length > 0 ? 1 : 0,
-    useLatestSnapshotPerLayer: input.snapshotId === undefined && currentSnapshots.length === 0 ? 1 : 0,
+    useLatestSnapshotPerLayer: 0,
     validOn: input.validOn ?? null,
     x: input.x,
     y: input.y,
@@ -199,6 +208,12 @@ function readCurrentAreaSnapshots(config: PrgConfig, layerIds: readonly string[]
         and c.completeness = 'complete'
       order by c.layer_id asc
     `).all() as AreaCurrentSnapshot[];
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return [];
+    }
+
+    throw error;
   } finally {
     database.close();
   }

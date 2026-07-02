@@ -27,6 +27,7 @@ export type SearchStreetsResult = {
 export async function searchStreets(config: PrgConfig, input: SearchStreetsInput): Promise<SearchStreetsResult> {
   validateSearchStreetsInput(input);
   const limit = input.limit ?? 20;
+  const query = input.query.trim();
   const streets: Array<StreetSummary & { readonly rank: StreetSearchResult }> = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes, "streets");
 
@@ -40,7 +41,7 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
     }
 
     try {
-      const shardResults = searchStreetFts(database, { limit, query: input.query });
+      const shardResults = searchStreetFts(database, { limit, query });
       const objectIds = shardResults.map((result) => result.objectId);
       const rankByObjectId = new Map(shardResults.map((result) => [result.objectId, result]));
       const rows = readStreetsByObjectIds(database, objectIds);
@@ -59,7 +60,7 @@ export async function searchStreets(config: PrgConfig, input: SearchStreetsInput
 }
 
 function validateSearchStreetsInput(input: SearchStreetsInput): void {
-  if (!input.query) {
+  if (!input.query || input.query.trim().length === 0) {
     throw new AddressToolError("INVALID_INPUT", "search_streets query is required.");
   }
 

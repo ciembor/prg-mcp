@@ -207,7 +207,7 @@ describe("WFS 2.0 client", () => {
 
     await expect(collectPages(repeatedNextClient.getFeaturePages({ typeNames: ["ms:A00_Granice_panstwa"], count: 2 }))).rejects.toMatchObject({
       code: "SOURCE_UNAVAILABLE",
-      message: "WFS pagination returned a repeated next URL.",
+      message: "WFS pagination returned a repeated URL.",
     });
 
     const maxPagesClient = createWfsClient({

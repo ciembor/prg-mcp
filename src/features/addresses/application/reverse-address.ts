@@ -43,14 +43,14 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     try {
       const queryCandidateLimit = maxCandidates;
       const useRtree = isAddressRtreeComplete(database);
-      candidateCount += useRtree
-        ? countRtreeCandidates(database, input.x, input.y, radiusMeters)
-        : countTableCandidates(database, input.x, input.y, radiusMeters);
+      const tableCandidateCount = countTableCandidates(database, input.x, input.y, radiusMeters);
+      const rtreeCandidateCount = useRtree ? countRtreeCandidates(database, input.x, input.y, radiusMeters) : undefined;
+      candidateCount += tableCandidateCount;
       if (candidateCount > maxCandidates) {
         throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
       }
 
-      let rows = useRtree
+      let rows = useRtree && rtreeCandidateCount === tableCandidateCount
         ? readRtreeCandidates(database, input.x, input.y, radiusMeters, queryCandidateLimit)
         : [];
 

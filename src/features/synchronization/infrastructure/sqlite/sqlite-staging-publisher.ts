@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync, statSync } from "node:fs";
 import { mkdir, rename, rm, stat } from "node:fs/promises";
 import { dirname } from "node:path";
+
+import Database from "better-sqlite3";
 
 import type { DownloadedSyncDataset, StagedPublication, SyncPublisher } from "../../application/run-sync.js";
 import type { SnapshotMetadata, SyncTarget } from "../../domain/sync-model.js";
@@ -27,6 +30,7 @@ export function createSqliteStagingPublisher(options: SqliteStagingPublisherOpti
       await mkdir(dirname(targetPath), { recursive: true });
       try {
         await options.writeStaging(publication.stagingPath, target, dataset, metadata);
+        checkpointSqlite(publication.stagingPath);
         return publication;
       } catch (error) {
         await remove(publication.stagingPath);
@@ -35,11 +39,16 @@ export function createSqliteStagingPublisher(options: SqliteStagingPublisherOpti
     },
     publish: async (candidate) => {
       const publication = asFilePublication(candidate);
-      if (await exists(publication.targetPath)) await rename(publication.targetPath, publication.backupPath);
+      await removeSqliteSidecars(publication.backupPath);
+      await removeSqliteSidecars(publication.stagingPath);
+      if (await exists(publication.targetPath)) {
+        checkpointSqlite(publication.targetPath);
+        await renameSqliteDatabase(publication.targetPath, publication.backupPath);
+      }
       try {
-        await rename(publication.stagingPath, publication.targetPath);
+        await renameSqliteDatabase(publication.stagingPath, publication.targetPath);
       } catch (error) {
-        if (await exists(publication.backupPath)) await rename(publication.backupPath, publication.targetPath);
+        if (await exists(publication.backupPath)) await renameSqliteDatabase(publication.backupPath, publication.targetPath);
         throw error;
       }
     },
@@ -47,13 +56,13 @@ export function createSqliteStagingPublisher(options: SqliteStagingPublisherOpti
       const publication = asFilePublication(candidate);
       await remove(publication.stagingPath);
       if (await exists(publication.backupPath)) {
-        await remove(publication.targetPath);
-        await rename(publication.backupPath, publication.targetPath);
+        await removeSqliteDatabase(publication.targetPath);
+        await renameSqliteDatabase(publication.backupPath, publication.targetPath);
       } else {
-        await remove(publication.targetPath);
+        await removeSqliteDatabase(publication.targetPath);
       }
     },
-    finalize: async (candidate) => remove(asFilePublication(candidate).backupPath),
+    finalize: async (candidate) => removeSqliteDatabase(asFilePublication(candidate).backupPath),
   };
 }
 
@@ -69,6 +78,49 @@ async function exists(path: string): Promise<boolean> {
 }
 
 async function remove(path: string): Promise<void> { await rm(path, { force: true }); }
+
+async function removeSqliteDatabase(path: string): Promise<void> {
+  await remove(path);
+  await removeSqliteSidecars(path);
+}
+
+async function removeSqliteSidecars(path: string): Promise<void> {
+  await remove(`${path}-wal`);
+  await remove(`${path}-shm`);
+}
+
+async function renameSqliteDatabase(from: string, to: string): Promise<void> {
+  await removeSqliteDatabase(to);
+  await rename(from, to);
+}
+
+function checkpointSqlite(path: string): void {
+  if (!existsSync(path) || !isSqliteDatabase(path)) {
+    return;
+  }
+
+  const database = new Database(path);
+  try {
+    database.pragma("wal_checkpoint(TRUNCATE)");
+    database.pragma("journal_mode = DELETE");
+  } finally {
+    database.close();
+  }
+}
+
+function isSqliteDatabase(path: string): boolean {
+  return readFileSync(path).subarray(0, 16).equals(Buffer.from("SQLite format 3\0", "binary"));
+}
+
+function existsSync(path: string): boolean {
+  try {
+    statSync(path);
+    return true;
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) return false;
+    throw error;
+  }
+}
 
 function isNodeError(error: unknown, code: string): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === code;

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
-import { assertDataInstalled, databaseTableHasRows } from "../../../shared/data-result.js";
+import { assertDataInstalled, databaseTableHasRows, isMissingSqliteTableError } from "../../../shared/data-result.js";
 import { searchAreaNames } from "../../search/index.js";
 import { getPrgLayer, listPrgLayers, prgLayerCategories, type PrgLayerCategory } from "../../source-catalog/index.js";
 import { AreaToolError, assertValidOn, toAreaSummary, whereValidOnClause, type AreaRow, type AreaSummary } from "./area-model.js";
@@ -39,13 +39,23 @@ export async function searchAreas(config: PrgConfig, input: SearchAreasInput): P
   const database = new Database(join(config.dataDir, "boundaries.sqlite"), { readonly: true });
 
   try {
-    const currentSnapshots = input.snapshotId === undefined ? readCurrentAreaSnapshots(config, layerIdsForInput(input)) : [];
+    const normalizedInput = { ...input, query: input.query?.trim() };
+    const currentSnapshots = normalizedInput.snapshotId === undefined ? readCurrentAreaSnapshots(config, layerIdsForInput(normalizedInput)) : [];
+    if (normalizedInput.snapshotId === undefined && currentSnapshots.length === 0) {
+      return { areas: [] };
+    }
     installCurrentSnapshotTable(database, currentSnapshots);
-    const rows = searchRows(database, input, currentSnapshots);
+    const rows = searchRows(database, normalizedInput, currentSnapshots);
 
     return {
       areas: rows.map(toAreaSummary),
     };
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return { areas: [] };
+    }
+
+    throw error;
   } finally {
     database.close();
   }
@@ -69,7 +79,7 @@ function searchByText(database: Database.Database, input: SearchAreasInput, curr
       layerIds,
       limit,
       query: input.query ?? "",
-      useLatestSnapshotPerLayer: input.snapshotId === undefined && currentSnapshots.length === 0,
+      useLatestSnapshotPerLayer: false,
       snapshotId: input.snapshotId,
       validOn: input.validOn,
   });
@@ -117,7 +127,7 @@ function searchByFilters(database: Database.Database, input: SearchAreasInput, c
       limit: Math.min(input.limit ?? 20, 100),
       snapshotId: input.snapshotId ?? null,
       useCurrentSnapshotTable: currentSnapshots.length > 0 ? 1 : 0,
-      useLatestSnapshotPerLayer: input.snapshotId === undefined && currentSnapshots.length === 0 ? 1 : 0,
+      useLatestSnapshotPerLayer: 0,
       validOn: input.validOn ?? null,
     }) as AreaRow[];
 }
@@ -189,6 +199,12 @@ function readCurrentAreaSnapshots(config: PrgConfig, layerIds: readonly string[]
         and c.completeness = 'complete'
       order by c.layer_id asc
     `).all() as AreaCurrentSnapshot[];
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return [];
+    }
+
+    throw error;
   } finally {
     database.close();
   }
@@ -237,6 +253,10 @@ function validateSearchAreasInput(input: SearchAreasInput): void {
 
   if (input.snapshotId !== undefined && (!Number.isInteger(input.snapshotId) || input.snapshotId < 1)) {
     throw new AreaToolError("INVALID_INPUT", "search_areas snapshotId must be a positive integer.");
+  }
+
+  if (input.query !== undefined && input.query.trim().length === 0) {
+    throw new AreaToolError("INVALID_INPUT", "search_areas query must not be blank.");
   }
 
   if (!input.query && !input.code && !input.layerId && !input.category) {

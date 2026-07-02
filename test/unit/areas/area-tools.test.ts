@@ -39,9 +39,8 @@ describe("P5 area tools", () => {
     await expect(searchAreas(config, { code: "1408032", snapshotId: 2 })).resolves.toMatchObject({
       areas: [{ name: "Gmina Wieliszew 2025", snapshotId: 2 }],
     });
-    await expect(searchAreas(config, { code: "1408032" })).resolves.toMatchObject({
-      areas: [{ name: "Gmina Wieliszew 2025", snapshotId: 2 }],
-    });
+    await expect(searchAreas(config, { code: "1408032" })).resolves.toMatchObject({ areas: [] });
+    await expect(searchAreas(config, { query: "   ", snapshotId: 1 })).rejects.toMatchObject({ code: "INVALID_INPUT" });
     await expect(searchAreas(config, { code: "1408032", query: "nietrafiajacy tekst", snapshotId: 2 })).resolves.toMatchObject({ areas: [] });
     await expect(searchAreas(config, { code: "Gmina Wieliszew", snapshotId: 1 })).resolves.toMatchObject({ areas: [] });
     await expect(searchAreas(config, { category: "address", query: "Wieliszew", snapshotId: 1 })).rejects.toMatchObject({ code: "INVALID_INPUT" });
@@ -82,14 +81,14 @@ describe("P5 area tools", () => {
   it("keeps golden area queries for administrative, court, prosecution, police, tax, forest and maritime layers", async () => {
     const { config } = await createAreaFixture();
 
-    await expect(searchAreas(config, { category: "administrative", query: "Mazowieckie" })).resolves.toMatchObject({ areas: [{ layerId: "A01" }] });
-    await expect(searchAreas(config, { category: "administrative", query: "Legionowski" })).resolves.toMatchObject({ areas: [{ layerId: "A02" }] });
-    await expect(searchAreas(config, { category: "court", query: "Sąd Rejonowy" })).resolves.toMatchObject({ areas: [{ layerId: "S03" }] });
-    await expect(searchAreas(config, { category: "prosecution", query: "Prokuratura Rejonowa" })).resolves.toMatchObject({ areas: [{ layerId: "P03" }] });
-    await expect(searchAreas(config, { category: "service", query: "Komenda Powiatowa" })).resolves.toMatchObject({ areas: [{ layerId: "K02" }] });
-    await expect(searchAreas(config, { category: "office", query: "Urząd Skarbowy" })).resolves.toMatchObject({ areas: [{ layerId: "U02" }] });
-    await expect(searchAreas(config, { category: "office", query: "Nadleśnictwo" })).resolves.toMatchObject({ areas: [{ layerId: "U06" }] });
-    await expect(searchAreas(config, { category: "maritime", query: "Morze Terytorialne" })).resolves.toMatchObject({ areas: [{ layerId: "W02" }] });
+    await expect(searchAreas(config, { category: "administrative", query: "Mazowieckie", snapshotId: 1 })).resolves.toMatchObject({ areas: [{ layerId: "A01" }] });
+    await expect(searchAreas(config, { category: "administrative", query: "Legionowski", snapshotId: 1 })).resolves.toMatchObject({ areas: [{ layerId: "A02" }] });
+    await expect(searchAreas(config, { category: "court", query: "Sąd Rejonowy", snapshotId: 1 })).resolves.toMatchObject({ areas: [{ layerId: "S03" }] });
+    await expect(searchAreas(config, { category: "prosecution", query: "Prokuratura Rejonowa", snapshotId: 1 })).resolves.toMatchObject({ areas: [{ layerId: "P03" }] });
+    await expect(searchAreas(config, { category: "service", query: "Komenda Powiatowa", snapshotId: 1 })).resolves.toMatchObject({ areas: [{ layerId: "K02" }] });
+    await expect(searchAreas(config, { category: "office", query: "Urząd Skarbowy", snapshotId: 1 })).resolves.toMatchObject({ areas: [{ layerId: "U02" }] });
+    await expect(searchAreas(config, { category: "office", query: "Nadleśnictwo", snapshotId: 1 })).resolves.toMatchObject({ areas: [{ layerId: "U06" }] });
+    await expect(searchAreas(config, { category: "maritime", query: "Morze Terytorialne", snapshotId: 1 })).resolves.toMatchObject({ areas: [{ layerId: "W02" }] });
   });
 
   it("gets common area attributes and full geometry with simplification metadata", async () => {

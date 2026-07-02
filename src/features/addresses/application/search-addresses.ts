@@ -48,6 +48,7 @@ type NormalizedStructuredQuery = AddressStructuredQuery & {
 export async function searchAddresses(config: PrgConfig, input: SearchAddressesInput): Promise<SearchAddressesResult> {
   validateSearchInput(input);
   const limit = input.limit ?? 20;
+  const query = input.query?.trim();
   const structuredQuery = input.structured ? normalizeStructuredQuery(input.structured) : undefined;
   const addresses: Array<AddressSummary & { readonly rank?: AddressSearchResult }> = [];
   const shardSelection = selectAddressShards(input.voivodeshipCodes, structuredQuery?.streetIdentifier);
@@ -63,8 +64,8 @@ export async function searchAddresses(config: PrgConfig, input: SearchAddressesI
     }
 
     try {
-      const shardResults = input.query
-        ? searchAddressFts(database, { limit, query: input.query })
+      const shardResults = query
+        ? searchAddressFts(database, { limit, query })
         : searchStructuredObjectIds(database, structuredQuery ?? {}, limit).map((objectId) => ({ objectId }));
       const objectIds = shardResults.map((result) => result.objectId);
 
@@ -84,10 +85,10 @@ export async function searchAddresses(config: PrgConfig, input: SearchAddressesI
 }
 
 function validateSearchInput(input: SearchAddressesInput): void {
-  const hasQuery = Boolean(input.query);
+  const hasQuery = input.query !== undefined && input.query.trim().length > 0;
   const hasStructured = Boolean(input.structured);
 
-  if (hasQuery === hasStructured) {
+  if (hasQuery === hasStructured || (input.query !== undefined && input.query.trim().length === 0)) {
     throw new AddressToolError("INVALID_INPUT", "search_addresses requires exactly one of query or structured input.");
   }
 

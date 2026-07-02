@@ -98,4 +98,20 @@ describe("paged synchronization sources", () => {
     });
     expect((await source.download({} as never, conditional)).adapterVersion).toBe("1");
   });
+
+  it("passes conditional metadata to paged WFS downloads", async () => {
+    const conditional = { etag: "etag-one", lastModified: "Mon, 22 Jun 2026 00:00:00 GMT" };
+    const source = createPagedWfsSyncSource({
+      adapterVersion: "1",
+      probe: async () => ({ checkedAt: "2026-06-23T00:00:00.000Z", sourceUrl: "https://example.test/wfs", status: "available" }),
+      schemaFingerprint: "schema",
+      sourceUrl: "https://example.test/wfs",
+      pages: async function* (_target, receivedConditional) {
+        expect(receivedConditional).toEqual(conditional);
+        yield { bytes: new Uint8Array([1]), next: false, numberMatched: 1, records: [record("a")] };
+      },
+    });
+
+    expect((await source.download({} as never, conditional)).records).toHaveLength(1);
+  });
 });

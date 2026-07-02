@@ -47,6 +47,7 @@ const streetSummarySchema = z.object({
 const dataResultMetadataSchema = z.object({
   coverage: z.object({
     complete: z.boolean(),
+    installedPairs: z.array(z.string()),
     installedScopes: z.array(z.string()),
     missingScopes: z.array(z.string()),
   }),
@@ -81,7 +82,7 @@ export function createSearchAddressesTool(config: PrgConfig) {
     },
     input: z.object({
       limit: z.number().int().min(1).max(100).default(20),
-      query: z.string().min(1).optional(),
+      query: z.string().trim().min(1).optional(),
       structured: z.object({
         buildingNumber: z.string().min(1).optional(),
         localityId: z.string().min(1).optional(),
@@ -170,7 +171,7 @@ export function createSearchStreetsTool(config: PrgConfig) {
     },
     input: z.object({
       limit: z.number().int().min(1).max(100).default(20),
-      query: z.string().min(1),
+      query: z.string().trim().min(1),
       voivodeshipCodes: z.array(voivodeshipCodeSchema).min(1).max(16).optional(),
     }),
     name: "search_streets",

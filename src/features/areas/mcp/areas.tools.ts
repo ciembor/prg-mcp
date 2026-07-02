@@ -41,6 +41,7 @@ const areaSummarySchema = z.object({
 const dataResultMetadataSchema = z.object({
   coverage: z.object({
     complete: z.boolean(),
+    installedPairs: z.array(z.string()),
     installedScopes: z.array(z.string()),
     missingScopes: z.array(z.string()),
   }),
@@ -78,7 +79,7 @@ export function createSearchAreasTool(config: PrgConfig) {
       code: z.string().min(1).optional(),
       layerId: z.string().min(1).optional(),
       limit: z.number().int().min(1).max(100).default(20),
-      query: z.string().min(1).optional(),
+      query: z.string().trim().min(1).optional(),
       snapshotId: z.number().int().positive().optional(),
       validOn: dateSchema.optional(),
     }),

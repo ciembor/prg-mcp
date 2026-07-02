@@ -12,7 +12,7 @@ export type SyncPage = {
 
 export type PagedWfsSourceOptions = {
   readonly probe: SyncSource["probe"];
-  readonly pages: (target: SyncTarget) => AsyncIterable<SyncPage>;
+  readonly pages: (target: SyncTarget, conditional?: { readonly etag?: string; readonly lastModified?: string }) => AsyncIterable<SyncPage>;
   readonly sourceUrl: string;
   readonly schemaFingerprint: string;
   readonly adapterVersion: string;
@@ -23,12 +23,12 @@ export type PagedWfsSourceOptions = {
 export function createPagedWfsSyncSource(options: PagedWfsSourceOptions): SyncSource {
   return {
     probe: options.probe,
-    download: async (target) => {
+    download: async (target, conditional) => {
       const records: SyncRecord[] = [];
       const chunks: Uint8Array[] = [];
       let expectedCount: number | "unknown" = "unknown";
       let downloadedBytes = 0;
-      for await (const page of options.pages(target)) {
+      for await (const page of options.pages(target, conditional)) {
         downloadedBytes += page.bytes.byteLength;
         if (options.maxDownloadBytes !== undefined && downloadedBytes > options.maxDownloadBytes) {
           throw new Error(`WFS download exceeded PRG_MAX_DOWNLOAD_BYTES limit of ${options.maxDownloadBytes} bytes.`);

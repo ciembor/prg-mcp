@@ -83,6 +83,8 @@ describe("P6 address tools", () => {
       voivodeshipCodes: ["14"],
     })).resolves.toMatchObject({ addresses: [] });
     await expect(searchAddresses(config, { query: "Warszawa", structured: { localityName: "Warszawa" } })).rejects.toThrow("exactly one");
+    await expect(searchAddresses(config, { query: "   ", voivodeshipCodes: ["14"] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    await expect(searchStreets(config, { query: "   ", voivodeshipCodes: ["14"] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
   });
 
   it("does not treat partial address coverage as a complete voivodeship shard", async () => {

@@ -133,17 +133,22 @@ export function listInstalledAddressShards(config: PrgConfig, selected?: readonl
   const layerId = table === "addresses" ? "A07" : "A08";
   const coverage = readAddressCoverage(config, layerId);
 
-  if (coverage.hasCatalogRows) {
-    return allowed.filter((voivodeshipCode) => coverage.completeVoivodeships.has(voivodeshipCode));
-  }
+  return allowed.filter((voivodeshipCode) => {
+    if (coverage.coveredVoivodeships.has(voivodeshipCode)) {
+      return coverage.completeVoivodeships.has(voivodeshipCode);
+    }
 
-  return allowed.filter((voivodeshipCode) => databaseTableHasRows(config, `addresses-${voivodeshipCode}.sqlite`, table));
+    return databaseTableHasRows(config, `addresses-${voivodeshipCode}.sqlite`, table);
+  });
 }
 
-function readAddressCoverage(config: PrgConfig, layerId: "A07" | "A08"): { readonly hasCatalogRows: boolean; readonly completeVoivodeships: ReadonlySet<PrgVoivodeshipCode> } {
+function readAddressCoverage(
+  config: PrgConfig,
+  layerId: "A07" | "A08",
+): { readonly coveredVoivodeships: ReadonlySet<PrgVoivodeshipCode>; readonly completeVoivodeships: ReadonlySet<PrgVoivodeshipCode> } {
   const catalogPath = join(config.dataDir, "catalog.sqlite");
   if (!existsSync(catalogPath)) {
-    return { completeVoivodeships: new Set(), hasCatalogRows: false };
+    return { completeVoivodeships: new Set(), coveredVoivodeships: new Set() };
   }
 
   const database = new Database(catalogPath, { fileMustExist: true, readonly: true });
@@ -160,17 +165,28 @@ function readAddressCoverage(config: PrgConfig, layerId: "A07" | "A08"): { reado
       completeVoivodeships: new Set(rows
         .filter((row) => row.scopeType === "voivodeship" && row.completeness === "complete" && prgVoivodeshipCodes.includes(row.scopeCode as never))
         .map((row) => row.scopeCode as PrgVoivodeshipCode)),
-      hasCatalogRows: rows.length > 0,
+      coveredVoivodeships: new Set(rows
+        .map((row) => voivodeshipForCoverageScope(row.scopeType, row.scopeCode))
+        .filter((code): code is PrgVoivodeshipCode => code !== undefined)),
     };
   } catch (error) {
     if (isMissingCatalogTableError(error)) {
-      return { completeVoivodeships: new Set(), hasCatalogRows: false };
+      return { completeVoivodeships: new Set(), coveredVoivodeships: new Set() };
     }
 
     throw error;
   } finally {
     database.close();
   }
+}
+
+function voivodeshipForCoverageScope(scopeType: string, scopeCode: string): PrgVoivodeshipCode | undefined {
+  if (scopeType !== "voivodeship" && scopeType !== "county" && scopeType !== "municipality") {
+    return undefined;
+  }
+
+  const code = scopeCode.slice(0, 2);
+  return prgVoivodeshipCodes.includes(code as never) ? code as PrgVoivodeshipCode : undefined;
 }
 
 function isMissingCatalogTableError(error: unknown): boolean {

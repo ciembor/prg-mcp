@@ -15,6 +15,7 @@ type DataResultMetadata = {
   readonly syncedAt: string | null;
   readonly coverage: {
     readonly complete: boolean;
+    readonly installedPairs: string[];
     readonly installedScopes: string[];
     readonly missingScopes: string[];
   };
@@ -53,6 +54,7 @@ export function createDataResultMetadata(
   return {
     coverage: {
       complete: requestedScopes !== undefined && missingScopes.length === 0 && installedScopes.length > 0,
+      installedPairs: coveragePairs.map((pair) => coveragePairKey(pair.layerId, pair.scope)).sort(),
       installedScopes,
       missingScopes,
     },

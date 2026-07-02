@@ -160,14 +160,18 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
 
       while (true) {
         assertPageLimit(pageCount, maxPages);
+        const currentUrl = nextUrl ?? buildGetFeatureUrl(options.endpoint, {
+          ...request,
+          count: pageSize,
+          startIndex,
+        });
+        rememberVisitedUrl(visitedUrls, currentUrl);
 
-        const page = nextUrl
-          ? await getFeaturePageFromUrl(nextUrl)
-          : await this.getFeaturePage({
-            ...request,
-            count: pageSize,
-            startIndex,
-          });
+        const page = await getFeaturePageFromUrl(currentUrl);
+        nextUrl = page.next ? sameOriginNextUrl(options.endpoint, page.next) : undefined;
+        if (nextUrl) {
+          assertUrlNotVisited(visitedUrls, nextUrl);
+        }
 
         pageCount += 1;
         recordCount += page.numberReturned;
@@ -180,8 +184,6 @@ export function createWfsClient(options: WfsClientOptions): WfsClient {
         }
 
         startIndex += page.numberReturned;
-        nextUrl = page.next ? sameOriginNextUrl(options.endpoint, page.next) : undefined;
-        rememberNextUrl(visitedUrls, nextUrl);
       }
     },
   };
@@ -199,16 +201,15 @@ function assertRecordLimit(recordCount: number, maxRecords: number): void {
   }
 }
 
-function rememberNextUrl(visitedUrls: Set<string>, nextUrl: string | undefined): void {
-  if (!nextUrl) {
-    return;
-  }
+function rememberVisitedUrl(visitedUrls: Set<string>, url: string): void {
+  assertUrlNotVisited(visitedUrls, url);
+  visitedUrls.add(url);
+}
 
-  if (visitedUrls.has(nextUrl)) {
-    throw new WfsClientError("WFS pagination returned a repeated next URL.", "SOURCE_UNAVAILABLE", { nextUrl });
+function assertUrlNotVisited(visitedUrls: Set<string>, url: string): void {
+  if (visitedUrls.has(url)) {
+    throw new WfsClientError("WFS pagination returned a repeated URL.", "SOURCE_UNAVAILABLE", { url });
   }
-
-  visitedUrls.add(nextUrl);
 }
 
 function handleRequestError(
