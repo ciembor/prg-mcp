@@ -44,7 +44,7 @@ export function createDataResultMetadata(
 ): DataResultMetadata {
   const coverage = readInstalledCoverage(config, input.layerIds, { archiveYear: input.archiveYear, datasetKeys: input.datasetKeys, snapshotIds: input.snapshotIds });
   const requestedScopes = input.requestedScopes && input.requestedScopes.length > 0 ? input.requestedScopes : undefined;
-  const fallbackPairs = input.snapshotIds && input.snapshotIds.length > 0 ? [] : (input.fallbackCoverage ?? fallbackCoveragePairs(input.layerIds, input.fallbackScopes ?? []));
+  const fallbackPairs = input.fallbackCoverage ?? fallbackCoveragePairs(input.layerIds, input.fallbackScopes ?? []);
   const coveragePairs = mergeCoveragePairs(coverage.pairs, fallbackPairs);
   const installedScopes = [...new Set(coveragePairs.map((pair) => pair.scope))].sort();
   const missingScopes = requestedScopes ? missingCoverageScopes(input.layerIds, requestedScopes, coveragePairs) : [];

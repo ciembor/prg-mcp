@@ -85,6 +85,27 @@ describe("P6 address tools", () => {
     await expect(searchAddresses(config, { query: "Warszawa", structured: { localityName: "Warszawa" } })).rejects.toThrow("exactly one");
   });
 
+  it("does not treat partial address coverage as a complete voivodeship shard", async () => {
+    const { config } = await createAddressFixture();
+    const catalog = new Database(join(config.dataDir, "catalog.sqlite"));
+    try {
+      const snapshot = catalog.prepare(`
+        insert into snapshots(dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
+        values ('current:A07','county:1408',null,'','2026-06-23','2026-06-23','partial',1,'schema','1','https://example.test')
+      `).run();
+      catalog.prepare(`
+        insert into installed_coverage(layer_id,dataset_key,archive_year,scope_type,scope_code,snapshot_id,completeness)
+        values ('A07','current:A07',0,'county','1408',?,'complete')
+      `).run(snapshot.lastInsertRowid);
+    } finally {
+      catalog.close();
+    }
+
+    await expect(searchAddresses(config, { query: "Warszawa", voivodeshipCodes: ["14"] })).rejects.toMatchObject({
+      code: "DATA_NOT_INSTALLED",
+    });
+  });
+
   it("gets address identifiers, IIP, coordinates, postal code attribute and source provenance", async () => {
     const { config, warszawaAddressId, zurawiaStreetId } = await createAddressFixture();
 

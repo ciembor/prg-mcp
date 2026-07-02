@@ -231,8 +231,12 @@ function layerIdsForCategory(category: PrgLayerCategory): string[] {
 const areaLayerCategories = prgLayerCategories.filter((category) => category !== "address");
 
 function validateSearchAreasInput(input: SearchAreasInput): void {
-  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
-    throw new AreaToolError("INVALID_INPUT", "search_areas limit must be a positive integer.");
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100)) {
+    throw new AreaToolError("INVALID_INPUT", "search_areas limit must be an integer between 1 and 100.");
+  }
+
+  if (input.snapshotId !== undefined && (!Number.isInteger(input.snapshotId) || input.snapshotId < 1)) {
+    throw new AreaToolError("INVALID_INPUT", "search_areas snapshotId must be a positive integer.");
   }
 
   if (!input.query && !input.code && !input.layerId && !input.category) {

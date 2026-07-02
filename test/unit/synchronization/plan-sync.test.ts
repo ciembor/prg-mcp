@@ -60,6 +60,9 @@ describe("PRG synchronization planner", () => {
     const plan = planSync({ availableDiskBytes: 10 ** 12, archiveYear: 2024, mode: "stale", profile: "administrative-history" });
     expect(plan.targets).toHaveLength(5);
     expect(plan.targets.every((target) => target.datasetKey.startsWith("archive:2024:"))).toBe(true);
+    expect(() => planSync({ availableDiskBytes: 10 ** 12, mode: "force", profile: "administrative-history" })).toThrowError(
+      expect.objectContaining({ code: "MISSING_ARCHIVE_YEAR" }),
+    );
     expect(() => planSync({ availableDiskBytes: 10 ** 12, archiveYear: 2014, mode: "force", profile: "administrative-history" })).toThrow(SyncPlanningError);
   });
 });

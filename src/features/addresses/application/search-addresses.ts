@@ -47,7 +47,7 @@ type NormalizedStructuredQuery = AddressStructuredQuery & {
 
 export async function searchAddresses(config: PrgConfig, input: SearchAddressesInput): Promise<SearchAddressesResult> {
   validateSearchInput(input);
-  const limit = Math.min(input.limit ?? 20, 100);
+  const limit = input.limit ?? 20;
   const structuredQuery = input.structured ? normalizeStructuredQuery(input.structured) : undefined;
   const addresses: Array<AddressSummary & { readonly rank?: AddressSearchResult }> = [];
   const shardSelection = selectAddressShards(input.voivodeshipCodes, structuredQuery?.streetIdentifier);
@@ -99,8 +99,8 @@ function validateSearchInput(input: SearchAddressesInput): void {
     throw new AddressToolError("INVALID_INPUT", "search_addresses structured fields must not be empty strings.");
   }
 
-  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
-    throw new AddressToolError("INVALID_INPUT", "search_addresses limit must be a positive integer.");
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100)) {
+    throw new AddressToolError("INVALID_INPUT", "search_addresses limit must be an integer between 1 and 100.");
   }
 
   if (input.voivodeshipCodes && input.voivodeshipCodes.length === 0) {

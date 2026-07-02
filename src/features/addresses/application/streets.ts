@@ -26,7 +26,7 @@ export type SearchStreetsResult = {
 
 export async function searchStreets(config: PrgConfig, input: SearchStreetsInput): Promise<SearchStreetsResult> {
   validateSearchStreetsInput(input);
-  const limit = Math.min(input.limit ?? 20, 100);
+  const limit = input.limit ?? 20;
   const streets: Array<StreetSummary & { readonly rank: StreetSearchResult }> = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes, "streets");
 
@@ -63,8 +63,8 @@ function validateSearchStreetsInput(input: SearchStreetsInput): void {
     throw new AddressToolError("INVALID_INPUT", "search_streets query is required.");
   }
 
-  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1)) {
-    throw new AddressToolError("INVALID_INPUT", "search_streets limit must be a positive integer.");
+  if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 100)) {
+    throw new AddressToolError("INVALID_INPUT", "search_streets limit must be an integer between 1 and 100.");
   }
 
   if (input.voivodeshipCodes && input.voivodeshipCodes.length === 0) {

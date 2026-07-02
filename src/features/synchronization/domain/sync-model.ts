@@ -74,7 +74,7 @@ export const defaultFreshnessPolicy: FreshnessPolicy = { maxAgeMs: 24 * 60 * 60 
 export class SyncPlanningError extends Error {
   constructor(
     message: string,
-    readonly code: "INVALID_PROFILE" | "INVALID_LAYER" | "INVALID_TERYT" | "INVALID_MODE" | "ARCHIVE_NOT_AVAILABLE" | "INSUFFICIENT_DISK_SPACE",
+    readonly code: "INVALID_PROFILE" | "INVALID_LAYER" | "INVALID_TERYT" | "INVALID_MODE" | "ARCHIVE_NOT_AVAILABLE" | "MISSING_ARCHIVE_YEAR" | "INSUFFICIENT_DISK_SPACE",
     readonly details: Readonly<Record<string, unknown>> = {},
   ) {
     super(message);

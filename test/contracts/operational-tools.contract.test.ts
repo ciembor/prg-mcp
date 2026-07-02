@@ -49,7 +49,7 @@ describe("operational MCP tools", () => {
     expect(layers.layers.find((layer) => layer.layerId === "A00")).toMatchObject({ available: true });
     expect(layers.layers.every((layer) => layer.usage.length > 10)).toBe(true);
     expect(status).toMatchObject({
-      completeForRequestedProfile: false,
+      completeForFullCatalog: false,
       installedCoveragePairCount: 1,
       installedLayerCount: 1,
       totalLayerCount: 54,

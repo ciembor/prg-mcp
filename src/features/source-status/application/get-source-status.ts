@@ -26,7 +26,7 @@ export type SourceStatusResult = {
   readonly coverage: readonly CoverageStatus[];
   readonly installedLayerCount: number;
   readonly installedCoveragePairCount: number;
-  readonly completeForRequestedProfile: boolean;
+  readonly completeForFullCatalog: boolean;
   readonly totalLayerCount: number;
 };
 export type SourceStatusProbe = () => Promise<readonly { readonly datasetKey: string; readonly status: OperationalSourceState }[]>;
@@ -39,7 +39,7 @@ export async function getSourceStatus(config: PrgConfig, checkRemote: boolean, p
   const installedLayerCount = new Set(currentCoverage.map((item) => item.layerId)).size;
   return {
     checkedRemote,
-    completeForRequestedProfile: installedLayerCount === listPrgLayers().length,
+    completeForFullCatalog: installedLayerCount === listPrgLayers().length,
     coverage,
     installedCoveragePairCount: new Set(currentCoverage.map((item) => `${item.layerId}:${item.scopeType}:${item.scopeCode}`)).size,
     installedLayerCount,

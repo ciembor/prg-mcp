@@ -100,6 +100,10 @@ function parseTerytScope(code: string): SyncScope {
 }
 
 function validateArchive(input: PlanSyncInput, layers: readonly PrgLayer[], scopes: readonly SyncScope[] | undefined): void {
+  if (input.profile === "administrative-history" && input.archiveYear === undefined) {
+    throw new SyncPlanningError("administrative-history requires archiveYear.", "MISSING_ARCHIVE_YEAR");
+  }
+
   if (input.profile !== "administrative-history" && input.archiveYear === undefined) return;
   const archive = input.archiveYear === undefined ? undefined : getPrgArchivalBoundaryPackage(input.archiveYear);
   if (!archive || layers.some((layer) => !archive.containsLayerIds.includes(layer.layerId as never)) || (scopes ?? []).some((scope) => scope.type !== "country")) {

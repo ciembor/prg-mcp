@@ -128,6 +128,10 @@ function validateLocatePointInput(input: LocatePointInput): void {
     throw new AreaToolError("INVALID_INPUT", "locate_point maxCandidates must be an integer between 1 and 10000.");
   }
 
+  if (input.snapshotId !== undefined && (!Number.isInteger(input.snapshotId) || input.snapshotId < 1)) {
+    throw new AreaToolError("INVALID_INPUT", "locate_point snapshotId must be a positive integer.");
+  }
+
   assertValidOn("locate_point", input.validOn);
   validateAreaCategory("locate_point", input.category);
   validateAreaLayerIds("locate_point", input.layerIds);

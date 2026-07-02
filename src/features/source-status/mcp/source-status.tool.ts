@@ -20,7 +20,7 @@ export function createSourceStatusTool(config: PrgConfig, probe?: SourceStatusPr
         completeness: z.string(), datasetKey: z.string(), layerId: z.string(), recordCount: z.number().int().optional(),
         scopeCode: z.string(), scopeType: z.string(), stateDate: z.string().optional(),
       })),
-      completeForRequestedProfile: z.boolean(),
+      completeForFullCatalog: z.boolean(),
       installedCoveragePairCount: z.number().int(),
       installedLayerCount: z.number().int(),
       remoteReason: z.string().optional(),

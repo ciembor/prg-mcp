@@ -41,7 +41,7 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
     }
 
     try {
-      const queryCandidateLimit = Math.min(maxCandidates, Math.min(limit, 100));
+      const queryCandidateLimit = maxCandidates;
       const useRtree = isAddressRtreeComplete(database);
       candidateCount += useRtree
         ? countRtreeCandidates(database, input.x, input.y, radiusMeters)

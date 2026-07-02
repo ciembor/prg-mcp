@@ -32,6 +32,6 @@ describe("area public API", () => {
     expectTypeOf<LocatePointInput>().toMatchTypeOf<{ x: number; y: number }>();
     expectTypeOf<LocatePointResult>().toMatchTypeOf<{ matches: readonly AreaSummary[] }>();
     expectTypeOf<RelateAreasInput>().toMatchTypeOf<{ areaId: string }>();
-    expectTypeOf<RelateAreasResult>().toMatchTypeOf<{ source: AreaSummary; matches: readonly AreaSummary[] }>();
+    expectTypeOf<RelateAreasResult>().toMatchTypeOf<{ sourceArea: AreaSummary; matches: readonly AreaSummary[] }>();
   });
 });

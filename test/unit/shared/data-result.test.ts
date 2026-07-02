@@ -169,7 +169,7 @@ describe("data result coverage metadata", () => {
     });
   });
 
-  it("marks explicit snapshot metadata as unknown when the catalog has no matching coverage", async () => {
+  it("uses fallback coverage for explicit snapshot metadata when the catalog has no matching coverage", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "prg-data-result-snapshot-unknown-"));
 
     expect(createDataResultMetadata(loadPrgConfig({
@@ -186,11 +186,11 @@ describe("data result coverage metadata", () => {
       snapshotIds: [123],
     })).toMatchObject({
       coverage: {
-        complete: false,
-        installedScopes: [],
-        missingScopes: ["country:PL"],
+        complete: true,
+        installedScopes: ["country:PL"],
+        missingScopes: [],
       },
-      datasetState: "unknown",
+      datasetState: "installed",
     });
   });
 

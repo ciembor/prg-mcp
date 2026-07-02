@@ -130,8 +130,51 @@ export function openAddressShard(config: PrgConfig, voivodeshipCode: PrgVoivodes
 
 export function listInstalledAddressShards(config: PrgConfig, selected?: readonly PrgVoivodeshipCode[], table: "addresses" | "streets" = "addresses"): readonly PrgVoivodeshipCode[] {
   const allowed = selected ?? prgVoivodeshipCodes;
+  const layerId = table === "addresses" ? "A07" : "A08";
+  const coverage = readAddressCoverage(config, layerId);
+
+  if (coverage.hasCatalogRows) {
+    return allowed.filter((voivodeshipCode) => coverage.completeVoivodeships.has(voivodeshipCode));
+  }
 
   return allowed.filter((voivodeshipCode) => databaseTableHasRows(config, `addresses-${voivodeshipCode}.sqlite`, table));
+}
+
+function readAddressCoverage(config: PrgConfig, layerId: "A07" | "A08"): { readonly hasCatalogRows: boolean; readonly completeVoivodeships: ReadonlySet<PrgVoivodeshipCode> } {
+  const catalogPath = join(config.dataDir, "catalog.sqlite");
+  if (!existsSync(catalogPath)) {
+    return { completeVoivodeships: new Set(), hasCatalogRows: false };
+  }
+
+  const database = new Database(catalogPath, { fileMustExist: true, readonly: true });
+  try {
+    const rows = database.prepare(`
+      select scope_type as scopeType, scope_code as scopeCode, completeness
+      from installed_coverage
+      where layer_id = @layerId
+        and dataset_key = @datasetKey
+        and archive_year = 0
+    `).all({ datasetKey: `current:${layerId}`, layerId }) as Array<{ scopeType: string; scopeCode: string; completeness: string }>;
+
+    return {
+      completeVoivodeships: new Set(rows
+        .filter((row) => row.scopeType === "voivodeship" && row.completeness === "complete" && prgVoivodeshipCodes.includes(row.scopeCode as never))
+        .map((row) => row.scopeCode as PrgVoivodeshipCode)),
+      hasCatalogRows: rows.length > 0,
+    };
+  } catch (error) {
+    if (isMissingCatalogTableError(error)) {
+      return { completeVoivodeships: new Set(), hasCatalogRows: false };
+    }
+
+    throw error;
+  } finally {
+    database.close();
+  }
+}
+
+function isMissingCatalogTableError(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "SQLITE_ERROR" && /no such table:/iu.test(error.message);
 }
 
 export function readAddressById(config: PrgConfig, addressId: string): AddressSummary {

@@ -20,7 +20,7 @@ export type RelateAreasInput = {
 };
 
 export type RelateAreasResult = {
-  readonly source: AreaSummary;
+  readonly sourceArea: AreaSummary;
   readonly relation: "intersects";
   readonly matches: readonly AreaSummary[];
 };
@@ -93,7 +93,7 @@ export async function relateAreas(config: PrgConfig, input: RelateAreasInput): P
     return {
       matches,
       relation: "intersects",
-      source: toAreaSummary(sourceRow),
+      sourceArea: toAreaSummary(sourceRow),
     };
   } finally {
     database.close();
@@ -111,6 +111,10 @@ function validateRelateAreasInput(input: RelateAreasInput): void {
 
   if (input.maxCandidates !== undefined && (!Number.isInteger(input.maxCandidates) || input.maxCandidates < 1 || input.maxCandidates > 10_000)) {
     throw new AreaToolError("INVALID_INPUT", "relate_areas maxCandidates must be an integer between 1 and 10000.");
+  }
+
+  if (input.snapshotId !== undefined && (!Number.isInteger(input.snapshotId) || input.snapshotId < 1)) {
+    throw new AreaToolError("INVALID_INPUT", "relate_areas snapshotId must be a positive integer.");
   }
 
   assertValidOn("relate_areas", input.validOn);

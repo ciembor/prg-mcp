@@ -175,16 +175,18 @@ describe("P5 area tools", () => {
     expect(result.source.layerIds).not.toContain("W06");
   });
 
-  it("reports unknown metadata for area snapshots missing from the catalog", async () => {
+  it("uses local fallback metadata for returned area snapshots missing from the catalog", async () => {
     const { config, gminaAreaId } = await createAreaFixture();
 
     const result = (await callTool(createApp(config), "get_area", { areaId: gminaAreaId })).structuredContent as {
       datasetState: string;
-      coverage: { installedScopes: string[] };
+      syncedAt: string | null;
+      coverage: { complete: boolean; installedScopes: string[] };
     };
 
-    expect(result.datasetState).toBe("unknown");
-    expect(result.coverage.installedScopes).toEqual([]);
+    expect(result.datasetState).toBe("installed");
+    expect(result.syncedAt).toBeNull();
+    expect(result.coverage).toMatchObject({ complete: true, installedScopes: ["country:PL"] });
   });
 
   it("relates bounded surfaces and lines and rejects unbounded scans at the MCP-schema level", async () => {
@@ -192,7 +194,7 @@ describe("P5 area tools", () => {
 
     const result = await relateAreas(config, { areaId: gminaAreaId, layerIds: ["W01"], snapshotId: 1 });
 
-    expect(result.source.objectId).toBe("gmina-wieliszew");
+    expect(result.sourceArea.objectId).toBe("gmina-wieliszew");
     expect(result.matches.map((match) => [match.layerId, match.objectId])).toEqual([["W01", "linia-testowa"]]);
     await expect(relateAreas(config, { areaId: gminaAreaId })).rejects.toMatchObject({ code: "UNBOUNDED_SCAN_REFUSED" });
     await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A07"] })).rejects.toMatchObject({ code: "INVALID_INPUT" });

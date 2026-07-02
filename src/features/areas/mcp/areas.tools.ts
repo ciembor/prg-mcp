@@ -172,8 +172,8 @@ export function createRelateAreasTool(config: PrgConfig) {
         structuredContent: {
           matches: result.matches.map(toMutableAreaSummary),
           relation: result.relation,
-          ...areaMetadata(config, { ...input, snapshotId: result.source.snapshotId }),
-          sourceArea: toMutableAreaSummary(result.source),
+          ...areaMetadata(config, { ...input, snapshotId: result.sourceArea.snapshotId }),
+          sourceArea: toMutableAreaSummary(result.sourceArea),
         },
       };
     },

@@ -45,8 +45,8 @@ function validateGetAreaGeometryInput(input: { readonly toleranceMeters?: number
     throw new AreaToolError("INVALID_INPUT", "get_area_geometry maxVertices must be an integer between 4 and 100000.");
   }
 
-  if (input.toleranceMeters !== undefined && (!Number.isFinite(input.toleranceMeters) || input.toleranceMeters < 0)) {
-    throw new AreaToolError("INVALID_INPUT", "get_area_geometry toleranceMeters must be at least 0.");
+  if (input.toleranceMeters !== undefined && (!Number.isFinite(input.toleranceMeters) || input.toleranceMeters < 0 || input.toleranceMeters > 10_000)) {
+    throw new AreaToolError("INVALID_INPUT", "get_area_geometry toleranceMeters must be between 0 and 10000.");
   }
 }
 
