@@ -22,10 +22,16 @@ export type AreaSearchOptions = {
   code?: string;
   layerId?: string;
   layerIds?: readonly string[];
+  currentSnapshots?: readonly AreaCurrentSnapshot[];
   snapshotId?: number;
   useLatestSnapshotPerLayer?: boolean;
   validOn?: string;
   limit?: number;
+};
+
+export type AreaCurrentSnapshot = {
+  readonly layerId: string;
+  readonly snapshotId: number;
 };
 
 export function normalizeAreaSearchText(text: string): string {

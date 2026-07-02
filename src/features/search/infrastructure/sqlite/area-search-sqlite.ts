@@ -33,6 +33,8 @@ export function searchAreaNames(database: Database.Database, options: AreaSearch
     return [];
   }
 
+  const currentSnapshots = options.currentSnapshots ?? [];
+  installCurrentSnapshotTable(database, currentSnapshots);
   const rows = database
     .prepare(searchAreaSql)
     .all({
@@ -45,6 +47,7 @@ export function searchAreaNames(database: Database.Database, options: AreaSearch
       normalizedPrefix: `${escapeLike(normalizedQuery)}%`,
       normalizedQuery,
       snapshotId: options.snapshotId ?? null,
+      useCurrentSnapshotTable: currentSnapshots.length > 0 ? 1 : 0,
       useLatestSnapshotPerLayer: options.useLatestSnapshotPerLayer ? 1 : 0,
       validOn: options.validOn ?? null,
     }) as AreaSearchSqlRow[];
@@ -73,6 +76,12 @@ const searchAreaSql = `
   join areas on areas.rowid = areas_fts.rowid
   where areas_fts match @ftsQuery
     and (@snapshotId is null or areas.snapshot_id = @snapshotId)
+    and (@useCurrentSnapshotTable = 0 or exists (
+      select 1
+      from temp.current_area_snapshots current
+      where current.layer_id = areas.layer_id
+        and current.snapshot_id = areas.snapshot_id
+    ))
     and (@useLatestSnapshotPerLayer = 0 or areas.snapshot_id = (
       select max(latest.snapshot_id)
       from areas latest
@@ -94,6 +103,21 @@ const searchAreaSql = `
     areas.rowid asc
   limit @limit
 `;
+
+function installCurrentSnapshotTable(database: Database.Database, currentSnapshots: readonly { readonly layerId: string; readonly snapshotId: number }[]): void {
+  database.exec(`
+    create temp table if not exists current_area_snapshots (
+      layer_id text primary key,
+      snapshot_id integer not null
+    );
+    delete from temp.current_area_snapshots;
+  `);
+
+  const insert = database.prepare("insert into temp.current_area_snapshots(layer_id, snapshot_id) values (@layerId, @snapshotId)");
+  for (const snapshot of currentSnapshots) {
+    insert.run(snapshot);
+  }
+}
 
 function toAreaSearchResult(row: AreaSearchSqlRow): AreaSearchResult {
   return {

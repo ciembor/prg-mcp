@@ -38,6 +38,6 @@ Przykład CLI:
 
 ```bash
 prg-mcp call list_layers '{}'
-prg-mcp call search_areas '{"query":"Krakow","layerIds":["A03"],"limit":5}'
+prg-mcp call search_areas '{"query":"Krakow","layerId":"A03","limit":5}'
 prg-mcp call locate_point '{"point":{"x":566000,"y":244000,"crs":"EPSG:2180"},"groups":["administrative"]}'
 ```

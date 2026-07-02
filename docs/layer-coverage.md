@@ -47,14 +47,14 @@ Każda z 54 warstw PRG ma wpis w statycznym katalogu, źródło, mapowanie kanon
 | U10 | `U10_Urzad_morski` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
 | U11 | `U11_Urzad_zeglugi_srodladowej` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
 | W01 | `W01_Linia_podstawowa_morza_terytorialnego` | `area-tools golden queries`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W02 | `W02_Morze_terytorialne_RP` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W03 | `W03_Morskie_wody_wewnetrzne` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W04 | `W04_Wylaczna_strefa_ekonomiczna` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W05 | `W05_Strefa_przylegla` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
+| W02 | `W02_Morze_terytorialne_RP` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
+| W03 | `W03_Morskie_wody_wewnetrzne` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
+| W04 | `W04_Wylaczna_strefa_ekonomiczna` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
+| W05 | `W05_Strefa_przylegla` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
 | W06 | `W06_Morskie_linie_brzegowe` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W07 | `W07_Pas_nadbrzezny` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W08 | `W08_Pas_ochronny` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W09 | `W09_Pas_techniczny` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W10 | `W10_Reda` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W11 | `W11_Port_morski` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
-| W12 | `W12_Przystan_morska` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `relate_areas` | WFS AdministrativeBoundaries |
+| W07 | `W07_Pas_nadbrzezny` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
+| W08 | `W08_Pas_ochronny` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
+| W09 | `W09_Pas_techniczny` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
+| W10 | `W10_Reda` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
+| W11 | `W11_Port_morski` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |
+| W12 | `W12_Przystan_morska` | `prg-layer-catalog`, `wfs-schema-shapes` | `search_areas`, `get_area`, `get_area_geometry`, `locate_point`, `relate_areas` | WFS AdministrativeBoundaries |

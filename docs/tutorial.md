@@ -33,7 +33,7 @@ prg-mcp setup --profile addresses --teryt 146501
 
 ```bash
 prg-mcp call list_layers '{}'
-prg-mcp call search_areas '{"query":"Warszawa","layerIds":["A03"],"limit":5}'
+prg-mcp call search_areas '{"query":"Warszawa","layerId":"A03","limit":5}'
 prg-mcp call source_status '{"checkRemote":false}'
 ```
 

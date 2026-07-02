@@ -36,7 +36,10 @@ describe("operational MCP tools", () => {
         insert into snapshots(dataset_key, scope, state_date, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
         values ('current:A00','country:PL','2026-06-22','2026-06-23','2026-06-23','abc',1,'schema','1','https://example.test')
       `).run();
-      database.prepare("insert into installed_coverage(layer_id,scope_type,scope_code,snapshot_id,completeness) values ('A00','country','PL',?,'complete')").run(snapshot.lastInsertRowid);
+      database.prepare(`
+        insert into installed_coverage(layer_id,dataset_key,archive_year,scope_type,scope_code,snapshot_id,completeness)
+        values ('A00','current:A00',0,'country','PL',?,'complete')
+      `).run(snapshot.lastInsertRowid);
     } finally { database.close(); }
     const app = createApp(testConfig(dataDir));
     const layers = (await callTool(app, "list_layers", {})).structuredContent as { layers: Array<{ layerId: string; available: boolean; usage: string }> };
@@ -67,7 +70,10 @@ describe("operational MCP tools", () => {
         insert into snapshots(dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
         values ('current:A00','country:PL',null,'','2026-06-23','2026-06-23','abc',1,'schema','1','https://example.test')
       `).run();
-      database.prepare("insert into installed_coverage(layer_id,scope_type,scope_code,snapshot_id,completeness) values ('A00','country','PL',?,'partial')").run(snapshot.lastInsertRowid);
+      database.prepare(`
+        insert into installed_coverage(layer_id,dataset_key,archive_year,scope_type,scope_code,snapshot_id,completeness)
+        values ('A00','current:A00',0,'country','PL',?,'partial')
+      `).run(snapshot.lastInsertRowid);
     } finally { database.close(); }
 
     const app = createApp(testConfig(dataDir));
@@ -75,6 +81,45 @@ describe("operational MCP tools", () => {
     const status = (await callTool(app, "source_status", {})).structuredContent;
     expect(layers.layers.find((layer) => layer.layerId === "A00")).toMatchObject({ available: false });
     expect(status).toMatchObject({ installedLayerCount: 0, sources: [] });
+  });
+
+  it("counts only current installed boundary snapshots in list_layers", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "prg-current-counts-"));
+    const { boundariesPath, catalogPath } = initializePrgDatabases({ addressShardCodes: ["14"], dataDir });
+    const catalog = new Database(catalogPath);
+    try {
+      catalog.prepare(`
+        insert into snapshots(id, dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
+        values (1, 'current:A03', 'country:PL', null, '', '2026-06-23', '2026-06-23', 'current', 1, 'schema', '1', 'https://example.test')
+      `).run();
+      catalog.prepare(`
+        insert into snapshots(id, dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url, archive_year)
+        values (2, 'archive:2024:A03', 'country:PL', '2024-01-01', '2024-01-01', '2026-06-24', '2026-06-24', 'archive', 2, 'schema', '1', 'https://example.test', 2024)
+      `).run();
+      catalog.prepare(`
+        insert into installed_coverage(layer_id,dataset_key,archive_year,scope_type,scope_code,snapshot_id,completeness)
+        values ('A03','current:A03',0,'country','PL',1,'complete'), ('A03','archive:2024:A03',2024,'country','PL',2,'complete')
+      `).run();
+    } finally {
+      catalog.close();
+    }
+
+    const boundaries = new Database(boundariesPath);
+    try {
+      boundaries.prepare(`
+        insert into areas(rowid, snapshot_id, layer_id, object_id, name, normalized_name, min_x, min_y, max_x, max_y, geometry_wkb)
+        values
+          (1, 1, 'A03', 'current', 'Current', 'current', 0, 0, 1, 1, X'00'),
+          (2, 2, 'A03', 'archive-1', 'Archive 1', 'archive 1', 0, 0, 1, 1, X'00'),
+          (3, 2, 'A03', 'archive-2', 'Archive 2', 'archive 2', 0, 0, 1, 1, X'00')
+      `).run();
+    } finally {
+      boundaries.close();
+    }
+
+    const app = createApp(testConfig(dataDir));
+    const layers = (await callTool(app, "list_layers", {})).structuredContent as { layers: Array<{ layerId: string; recordCount: number }> };
+    expect(layers.layers.find((layer) => layer.layerId === "A03")).toMatchObject({ recordCount: 1 });
   });
 
   it("does not expose sync_data until a real synchronization runner is wired", async () => {

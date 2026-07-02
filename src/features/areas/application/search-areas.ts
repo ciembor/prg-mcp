@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 import Database from "better-sqlite3";
 
 import type { PrgConfig } from "../../../runtime/config.js";
@@ -20,6 +23,11 @@ export type SearchAreasResult = {
   readonly areas: readonly AreaSummary[];
 };
 
+type AreaCurrentSnapshot = {
+  readonly layerId: string;
+  readonly snapshotId: number;
+};
+
 export async function searchAreas(config: PrgConfig, input: SearchAreasInput): Promise<SearchAreasResult> {
   validateSearchAreasInput(input);
   assertDataInstalled(
@@ -31,7 +39,9 @@ export async function searchAreas(config: PrgConfig, input: SearchAreasInput): P
   const database = new Database(`${config.dataDir}/boundaries.sqlite`, { readonly: true });
 
   try {
-    const rows = searchRows(database, input);
+    const currentSnapshots = input.snapshotId === undefined ? readCurrentAreaSnapshots(config, layerIdsForInput(input)) : [];
+    installCurrentSnapshotTable(database, currentSnapshots);
+    const rows = searchRows(database, input, currentSnapshots);
 
     return {
       areas: rows.map(toAreaSummary),
@@ -41,24 +51,25 @@ export async function searchAreas(config: PrgConfig, input: SearchAreasInput): P
   }
 }
 
-function searchRows(database: Database.Database, input: SearchAreasInput): AreaRow[] {
+function searchRows(database: Database.Database, input: SearchAreasInput, currentSnapshots: readonly AreaCurrentSnapshot[]): AreaRow[] {
   if (!input.query) {
-    return searchByFilters(database, input);
+    return searchByFilters(database, input, currentSnapshots);
   }
 
-  return searchByText(database, input);
+  return searchByText(database, input, currentSnapshots);
 }
 
-function searchByText(database: Database.Database, input: SearchAreasInput): AreaRow[] {
+function searchByText(database: Database.Database, input: SearchAreasInput, currentSnapshots: readonly AreaCurrentSnapshot[]): AreaRow[] {
   const limit = Math.min(input.limit ?? 20, 100);
   const layerIds = input.category ? layerIdsForCategory(input.category) : undefined;
   const matches = searchAreaNames(database, {
     code: input.code,
+      currentSnapshots,
       layerId: input.layerId,
       layerIds,
       limit,
       query: input.query ?? "",
-      useLatestSnapshotPerLayer: input.snapshotId === undefined,
+      useLatestSnapshotPerLayer: input.snapshotId === undefined && currentSnapshots.length === 0,
       snapshotId: input.snapshotId,
       validOn: input.validOn,
   });
@@ -82,7 +93,7 @@ function searchByText(database: Database.Database, input: SearchAreasInput): Are
   return rows;
 }
 
-function searchByFilters(database: Database.Database, input: SearchAreasInput): AreaRow[] {
+function searchByFilters(database: Database.Database, input: SearchAreasInput, currentSnapshots: readonly AreaCurrentSnapshot[]): AreaRow[] {
   if (!input.code && !input.layerId && !input.category) {
     return [];
   }
@@ -105,6 +116,8 @@ function searchByFilters(database: Database.Database, input: SearchAreasInput): 
       layerId: input.layerId ?? null,
       limit: Math.min(input.limit ?? 20, 100),
       snapshotId: input.snapshotId ?? null,
+      useCurrentSnapshotTable: currentSnapshots.length > 0 ? 1 : 0,
+      useLatestSnapshotPerLayer: input.snapshotId === undefined && currentSnapshots.length === 0 ? 1 : 0,
       validOn: input.validOn ?? null,
     }) as AreaRow[];
 }
@@ -112,12 +125,82 @@ function searchByFilters(database: Database.Database, input: SearchAreasInput): 
 function filtersSql(input: SearchAreasInput): string {
   return `
     and (@snapshotId is null or snapshot_id = @snapshotId)
-    ${input.snapshotId === undefined ? "and snapshot_id = (select max(latest.snapshot_id) from areas latest where latest.layer_id = areas.layer_id)" : ""}
+    and (@useCurrentSnapshotTable = 0 or exists (
+      select 1
+      from temp.current_area_snapshots current
+      where current.layer_id = areas.layer_id
+        and current.snapshot_id = areas.snapshot_id
+    ))
+    and (@useLatestSnapshotPerLayer = 0 or snapshot_id = (select max(latest.snapshot_id) from areas latest where latest.layer_id = areas.layer_id))
     and (@layerId is null or layer_id = @layerId)
     ${categorySql(input.category)}
     and (@code is null or lower(coalesce(code, '')) = lower(@code))
     ${whereValidOnClause(input.validOn)}
   `;
+}
+
+function installCurrentSnapshotTable(database: Database.Database, currentSnapshots: readonly AreaCurrentSnapshot[]): void {
+  database.exec(`
+    create temp table if not exists current_area_snapshots (
+      layer_id text primary key,
+      snapshot_id integer not null
+    );
+    delete from temp.current_area_snapshots;
+  `);
+
+  const insert = database.prepare("insert into temp.current_area_snapshots(layer_id, snapshot_id) values (@layerId, @snapshotId)");
+  for (const snapshot of currentSnapshots) {
+    insert.run(snapshot);
+  }
+}
+
+function layerIdsForInput(input: SearchAreasInput): readonly string[] {
+  if (input.layerId) {
+    return [input.layerId];
+  }
+
+  if (input.category) {
+    return layerIdsForCategory(input.category);
+  }
+
+  return listPrgLayers()
+    .filter((layer) => layer.sourceChannel === "wfs")
+    .map((layer) => layer.layerId);
+}
+
+function readCurrentAreaSnapshots(config: PrgConfig, layerIds: readonly string[]): readonly AreaCurrentSnapshot[] {
+  const catalogPath = join(config.dataDir, "catalog.sqlite");
+  if (layerIds.length === 0 || !existsSync(catalogPath)) {
+    return [];
+  }
+
+  const database = new Database(catalogPath, { fileMustExist: true, readonly: true });
+  try {
+    return database.prepare(`
+      select c.layer_id as layerId, c.snapshot_id as snapshotId
+      from installed_coverage c
+      where c.layer_id in (
+        @layerId0, @layerId1, @layerId2, @layerId3, @layerId4, @layerId5, @layerId6, @layerId7, @layerId8, @layerId9,
+        @layerId10, @layerId11, @layerId12, @layerId13, @layerId14, @layerId15, @layerId16, @layerId17, @layerId18, @layerId19,
+        @layerId20, @layerId21, @layerId22, @layerId23, @layerId24, @layerId25, @layerId26, @layerId27, @layerId28, @layerId29,
+        @layerId30, @layerId31, @layerId32, @layerId33, @layerId34, @layerId35, @layerId36, @layerId37, @layerId38, @layerId39,
+        @layerId40, @layerId41, @layerId42, @layerId43, @layerId44, @layerId45, @layerId46, @layerId47, @layerId48, @layerId49,
+        @layerId50, @layerId51, @layerId52, @layerId53
+      )
+        and c.dataset_key = 'current:' || c.layer_id
+        and c.archive_year = 0
+        and c.scope_type = 'country'
+        and c.scope_code = 'PL'
+        and c.completeness = 'complete'
+      order by c.layer_id asc
+    `).all(layerIdParameters(layerIds)) as AreaCurrentSnapshot[];
+  } finally {
+    database.close();
+  }
+}
+
+function layerIdParameters(layerIds: readonly string[]): Record<string, string> {
+  return Object.fromEntries(Array.from({ length: 54 }, (_, index) => [`layerId${index}`, layerIds[index] ?? ""])) as Record<string, string>;
 }
 
 function categorySql(category: PrgLayerCategory | undefined): string {

@@ -7,10 +7,8 @@ asystentow oraz automatyzacji.
 
 Obslugiwane zbiory:
 
-- 54 warstwy PRG: granice administracyjne, statystyczne, sadowe,
-  prokuratorskie, sluzbowe, urzedowe i morskie;
-- `A07` - punkty adresowe PRG;
-- `A08` - ulice PRG;
+- 54 warstwy PRG lacznie: 52 warstwy WFS granic i wlasciwosci
+  terytorialnej oraz `A07` punkty adresowe i `A08` ulice;
 - lokalne pokrycie danych, status zrodel i planowanie zakresow.
 
 Pakiet npm: `prg-mcp`.
@@ -57,7 +55,7 @@ Odpowiedz ma postac:
   ],
   "source": {
     "system": "PRG",
-    "layerIds": ["A01", "A02", "A03", "A04", "A05", "A06"],
+    "layerIds": ["A00", "A01", "A02", "A03", "A04", "A05", "A06"],
     "channels": ["wfs"]
   },
   "datasetState": "installed",

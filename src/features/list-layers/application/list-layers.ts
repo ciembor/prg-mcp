@@ -46,7 +46,14 @@ async function readCoverage(dataDir: string): Promise<ReadonlyMap<string, readon
   const path = join(dataDir, "catalog.sqlite");
   if (!(await exists(path))) return new Map();
   const rows = readSafely(() => withReadonlyDatabase(path, (database) => database.prepare(
-    "select distinct layer_id as layerId, scope_type as scopeType, scope_code as scopeCode from installed_coverage where completeness = 'complete' order by layer_id, scope_type, scope_code",
+    `
+      select distinct layer_id as layerId, scope_type as scopeType, scope_code as scopeCode
+      from installed_coverage
+      where completeness = 'complete'
+        and dataset_key = 'current:' || layer_id
+        and archive_year = 0
+      order by layer_id, scope_type, scope_code
+    `,
   ).all() as { layerId: string; scopeType: string; scopeCode: string }[])) ?? [];
   const result = new Map<string, string[]>();
   for (const row of rows) result.set(row.layerId, [...(result.get(row.layerId) ?? []), `${row.scopeType}:${row.scopeCode}`]);
@@ -57,13 +64,40 @@ async function readCounts(dataDir: string): Promise<ReadonlyMap<string, number>>
   const counts = new Map<string, number>();
   const boundariesPath = join(dataDir, "boundaries.sqlite");
   if (await exists(boundariesPath)) {
-    const rows = readSafely(() => withReadonlyDatabase(boundariesPath, (database) => database.prepare(
-      "select layer_id as layerId, count(*) as recordCount from areas group by layer_id",
-    ).all() as { layerId: string; recordCount: number }[])) ?? [];
+    const currentSnapshots = await readCurrentAreaSnapshots(dataDir);
+    const rows = readSafely(() => withReadonlyDatabase(boundariesPath, (database) => {
+      if (currentSnapshots.length === 0) {
+        return database.prepare("select layer_id as layerId, count(*) as recordCount from areas group by layer_id").all() as { layerId: string; recordCount: number }[];
+      }
+
+      const snapshotIds = currentSnapshots.map((_, index) => `@snapshotId${index}`).join(", ");
+      return database.prepare(`
+        select layer_id as layerId, count(*) as recordCount
+        from areas
+        where snapshot_id in (${snapshotIds})
+        group by layer_id
+      `).all(Object.fromEntries(currentSnapshots.map((snapshot, index) => [`snapshotId${index}`, snapshot.snapshotId]))) as { layerId: string; recordCount: number }[];
+    })) ?? [];
     for (const row of rows) counts.set(row.layerId, row.recordCount);
   }
   for (const code of prgVoivodeshipCodes) await addAddressShardCounts(counts, join(dataDir, `addresses-${code}.sqlite`));
   return counts;
+}
+
+async function readCurrentAreaSnapshots(dataDir: string): Promise<readonly { readonly snapshotId: number }[]> {
+  const path = join(dataDir, "catalog.sqlite");
+  if (!(await exists(path))) return [];
+
+  return readSafely(() => withReadonlyDatabase(path, (database) => database.prepare(`
+    select snapshot_id as snapshotId
+    from installed_coverage
+    where completeness = 'complete'
+      and dataset_key = 'current:' || layer_id
+      and archive_year = 0
+      and scope_type = 'country'
+      and scope_code = 'PL'
+    order by layer_id
+  `).all() as { snapshotId: number }[])) ?? [];
 }
 
 async function addAddressShardCounts(counts: Map<string, number>, path: string): Promise<void> {

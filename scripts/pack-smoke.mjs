@@ -7,6 +7,10 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const root = new URL("..", import.meta.url);
 const workspace = await mkdtemp(join(tmpdir(), "prg-mcp-pack-smoke-"));
+const npmEnv = {
+  ...process.env,
+  NPM_CONFIG_CACHE: join(workspace, "npm-cache"),
+};
 
 try {
   await execFileAsync("pnpm", ["build"], { cwd: root });
@@ -21,8 +25,8 @@ try {
 
   const appDir = join(workspace, "app");
   await mkdir(appDir);
-  await execFileAsync("npm", ["init", "-y"], { cwd: appDir });
-  await execFileAsync("npm", ["install", "--no-audit", "--no-fund", tarball], { cwd: appDir });
+  await execFileAsync("npm", ["init", "-y"], { cwd: appDir, env: npmEnv });
+  await execFileAsync("npm", ["install", "--no-audit", "--no-fund", tarball], { cwd: appDir, env: npmEnv });
   await execFileAsync("node", ["node_modules/prg-mcp/dist/cli.js", "tools"], { cwd: appDir });
   await execFileAsync("node", ["node_modules/prg-mcp/dist/cli.js", "setup"], {
     cwd: appDir,

@@ -86,7 +86,7 @@ describe("prg-mcp CLI contract", () => {
           policy: "read",
         },
         {
-          description: "Finds nearest PRG address points around an EPSG:2180 point using spatial-index candidates, exact distance, a hard radius and a per-shard candidate cap.",
+          description: "Finds nearest PRG address points around an EPSG:2180 point using spatial-index candidates, exact distance, a hard radius and a candidate scan limit.",
           name: "reverse_address",
           policy: "read",
         },

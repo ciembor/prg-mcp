@@ -29,6 +29,7 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
 
   const results: Array<AddressSummary & { distanceMeters: number }> = [];
   const installedShards = listInstalledAddressShards(config, input.voivodeshipCodes);
+  let candidateCount = 0;
 
   assertDataInstalled(installedShards.length > 0, "PRG address data is not installed for the requested scope.", addressRecoveryAction(input.voivodeshipCodes));
 
@@ -41,8 +42,15 @@ export async function reverseAddress(config: PrgConfig, input: ReverseAddressInp
 
     try {
       const queryCandidateLimit = Math.min(maxCandidates, Math.min(limit, 100));
+      const useRtree = isAddressRtreeComplete(database);
+      candidateCount += useRtree
+        ? countRtreeCandidates(database, input.x, input.y, radiusMeters)
+        : countTableCandidates(database, input.x, input.y, radiusMeters);
+      if (candidateCount > maxCandidates) {
+        throw new AddressToolError("CANDIDATE_LIMIT_EXCEEDED", `reverse_address candidate limit is ${maxCandidates}.`);
+      }
 
-      let rows = isAddressRtreeComplete(database)
+      let rows = useRtree
         ? readRtreeCandidates(database, input.x, input.y, radiusMeters, queryCandidateLimit)
         : [];
 
@@ -91,6 +99,41 @@ function validateReverseAddressInput(input: ReverseAddressInput, radiusMeters: n
   if (radiusMeters > maximumRadiusMeters) {
     throw new AddressToolError("RADIUS_LIMIT_EXCEEDED", `reverse_address radius limit is ${maximumRadiusMeters} meters.`);
   }
+}
+
+function countRtreeCandidates(database: import("better-sqlite3").Database, x: number, y: number, radiusMeters: number): number {
+  try {
+    return (database
+      .prepare(`
+        select count(*) as count
+        from addresses_rtree
+        join addresses on addresses.rowid = addresses_rtree.rowid
+        where addresses_rtree.min_x <= @maxX
+          and addresses_rtree.max_x >= @minX
+          and addresses_rtree.min_y <= @maxY
+          and addresses_rtree.max_y >= @minY
+          and ((addresses.x - @x) * (addresses.x - @x) + (addresses.y - @y) * (addresses.y - @y)) <= @radiusSquared
+      `)
+      .get(candidateParameters(x, y, radiusMeters, 1)) as { count: number }).count;
+  } catch (error) {
+    if (isMissingSqliteTableError(error)) {
+      return countTableCandidates(database, x, y, radiusMeters);
+    }
+
+    throw error;
+  }
+}
+
+function countTableCandidates(database: import("better-sqlite3").Database, x: number, y: number, radiusMeters: number): number {
+  return (database
+    .prepare(`
+      select count(*) as count
+      from addresses
+      where x between @minX and @maxX
+        and y between @minY and @maxY
+        and ((x - @x) * (x - @x) + (y - @y) * (y - @y)) <= @radiusSquared
+    `)
+    .get(candidateParameters(x, y, radiusMeters, 1)) as { count: number }).count;
 }
 
 function readRtreeCandidates(database: import("better-sqlite3").Database, x: number, y: number, radiusMeters: number, limit: number): AddressRow[] {

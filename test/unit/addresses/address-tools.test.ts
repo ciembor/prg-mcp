@@ -147,8 +147,8 @@ describe("P6 address tools", () => {
       lodz.close();
       mazowieckie.close();
     }
-    await expect(reverseAddress(config, { limit: 1, maxCandidates: 1, radiusMeters: 20, voivodeshipCodes: ["10", "14"], x: 100, y: 100 })).resolves.toMatchObject({
-      addresses: [{ distanceMeters: 0 }],
+    await expect(reverseAddress(config, { limit: 1, maxCandidates: 1, radiusMeters: 20, voivodeshipCodes: ["10", "14"], x: 100, y: 100 })).rejects.toMatchObject({
+      code: "CANDIDATE_LIMIT_EXCEEDED",
     });
   });
 
@@ -192,7 +192,7 @@ describe("P6 address tools", () => {
       database.close();
     }
 
-    await expect(reverseAddress(config, { maxCandidates: 1, radiusMeters: 10, voivodeshipCodes: ["14"], x: 0, y: 0 })).resolves.toMatchObject({
+    await expect(reverseAddress(config, { limit: 1, maxCandidates: 2, radiusMeters: 10, voivodeshipCodes: ["14"], x: 0, y: 0 })).resolves.toMatchObject({
       addresses: [{ objectId: "pa-circle-center" }],
     });
   });

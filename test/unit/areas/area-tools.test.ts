@@ -48,6 +48,34 @@ describe("P5 area tools", () => {
     await expect(searchAreas(config, {})).rejects.toMatchObject({ code: "INVALID_INPUT" });
   });
 
+  it("uses catalog current snapshots instead of max snapshot id for area queries", async () => {
+    const { config } = await createAreaFixture();
+    const catalog = new Database(join(config.dataDir, "catalog.sqlite"));
+    try {
+      catalog.prepare(`
+        insert into snapshots(id, dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url)
+        values (1, 'current:A03', 'country:PL', null, '', '2026-06-23', '2026-06-23', 'current', 1, 'schema', '1', 'https://example.test')
+      `).run();
+      catalog.prepare(`
+        insert into snapshots(id, dataset_key, scope, state_date, state_date_key, downloaded_at, checked_at, sha256, record_count, schema_fingerprint, adapter_version, source_url, archive_year)
+        values (2, 'archive:2024:A03', 'country:PL', '2024-01-01', '2024-01-01', '2026-06-24', '2026-06-24', 'archive', 1, 'schema', '1', 'https://example.test', 2024)
+      `).run();
+      catalog.prepare(`
+        insert into installed_coverage(layer_id,dataset_key,archive_year,scope_type,scope_code,snapshot_id,completeness)
+        values ('A03','current:A03',0,'country','PL',1,'complete'), ('A03','archive:2024:A03',2024,'country','PL',2,'complete')
+      `).run();
+    } finally {
+      catalog.close();
+    }
+
+    await expect(searchAreas(config, { code: "1408032", layerId: "A03" })).resolves.toMatchObject({
+      areas: [{ name: "Gmina Wieliszew", snapshotId: 1 }],
+    });
+    await expect(locatePoint(config, { layerIds: ["A03"], x: 5, y: 5 })).resolves.toMatchObject({
+      matches: [{ objectId: "gmina-wieliszew", snapshotId: 1 }],
+    });
+  });
+
   it("keeps golden area queries for administrative, court, prosecution, police, tax, forest and maritime layers", async () => {
     const { config } = await createAreaFixture();
 

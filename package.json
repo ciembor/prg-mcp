@@ -37,8 +37,9 @@
     "generate:feature": "mcp-craftsman generate feature",
     "quality": "mcp-craftsman quality",
     "security:audit": "pnpm audit --audit-level high",
+    "test:unit": "vitest run",
     "test:pack-smoke": "node scripts/pack-smoke.mjs",
-    "test": "vitest run"
+    "test": "pnpm quality && pnpm test:pack-smoke"
   },
   "dependencies": {
     "@loaders.gl/core": "4.4.3",
