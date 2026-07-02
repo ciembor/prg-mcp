@@ -71,6 +71,7 @@ const polishCharacterMap: Readonly<Record<string, string>> = {
 export function normalizePolishSearchText(text: string): string {
   const normalized = text
     .toLowerCase()
+    .replace(/\b(\d{2})-(\d{3})\b/gu, "$1$2")
     .replace(/[ąćęłńóśźż]/gu, (character) => polishCharacterMap[character] ?? character)
     .replace(/\b(?:ul|ulica)\.?\b/gu, " ulica ")
     .replace(/\b(?:al|aleja)\.?\b/gu, " aleja ")
@@ -80,6 +81,11 @@ export function normalizePolishSearchText(text: string): string {
     .replace(/\s+/gu, " ");
 
   return joinHouseNumberSuffixes(compactSlashSpacing(normalized));
+}
+
+export function normalizePostalCodeSearchText(text: string): string {
+  const compact = text.trim().replace(/\b(\d{2})-(\d{3})\b/gu, "$1$2");
+  return normalizePolishSearchText(compact);
 }
 
 export function toPolishFtsQuery(query: string): string | undefined {

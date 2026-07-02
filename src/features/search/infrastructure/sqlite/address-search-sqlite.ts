@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 import {
   classifyBestTextMatch,
   compareTextMatches,
+  normalizePostalCodeSearchText,
   normalizePolishSearchText,
   removeOptionalStreetKind,
   toPolishFtsQuery,
@@ -53,7 +54,7 @@ export function insertAddressSearchDocument(database: Database.Database, documen
       buildingNumber: normalizePolishSearchText(document.buildingNumber),
       fullAddress: normalizePolishSearchText(document.fullAddress),
       localityName: normalizePolishSearchText(document.localityName),
-      postalCode: document.postalCode ? normalizePolishSearchText(document.postalCode) : null,
+      postalCode: document.postalCode ? normalizePostalCodeSearchText(document.postalCode) : null,
       rowid: document.rowid,
       streetName: document.streetName ? normalizePolishSearchText(document.streetName) : null,
     });

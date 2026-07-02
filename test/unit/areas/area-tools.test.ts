@@ -5,6 +5,9 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { callTool } from "@mcp-craftsman/core";
+
+import { createApp } from "../../../src/app.js";
 import { encodeAreaId, getArea, getAreaGeometry, locatePoint, relateAreas, searchAreas, vertexCount } from "../../../src/features/areas/index.js";
 import { initializePrgDatabases } from "../../../src/features/persistence/index.js";
 import { bboxOfGeometry, centroidOfGeometry, encodeWkb, type LineStringGeometry, type PolygonGeometry, type PrgGeometry } from "../../../src/features/spatial/index.js";
@@ -149,6 +152,21 @@ describe("P5 area tools", () => {
     await expect(locatePoint(config, { category: "administrative", validOn: "abc", x: 10, y: 5 })).rejects.toMatchObject({
       code: "INVALID_INPUT",
     });
+    await expect(locatePoint(config, { category: "unknown" as never, snapshotId: 1, x: 10, y: 5 })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
+  });
+
+  it("reports locate_point metadata only for searchable polygon layers", async () => {
+    const { config } = await createAreaFixture();
+
+    const result = (await callTool(createApp(config), "locate_point", { category: "maritime", snapshotId: 1, x: 5, y: 5 })).structuredContent as {
+      source: { layerIds: string[] };
+    };
+
+    expect(result.source.layerIds).toContain("W02");
+    expect(result.source.layerIds).not.toContain("W01");
+    expect(result.source.layerIds).not.toContain("W06");
   });
 
   it("relates bounded surfaces and lines and rejects unbounded scans at the MCP-schema level", async () => {
@@ -161,6 +179,7 @@ describe("P5 area tools", () => {
     await expect(relateAreas(config, { areaId: gminaAreaId })).rejects.toMatchObject({ code: "UNBOUNDED_SCAN_REFUSED" });
     await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A07"] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
     await expect(relateAreas(config, { areaId: gminaAreaId, category: "administrative", layerIds: [] })).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    await expect(relateAreas(config, { areaId: gminaAreaId, category: "unknown" as never })).rejects.toMatchObject({ code: "INVALID_INPUT" });
     await expect(relateAreas(config, { areaId: gminaAreaId, layerIds: ["A03"], validOn: "2026-02-31" })).rejects.toMatchObject({ code: "INVALID_INPUT" });
   });
 

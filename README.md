@@ -714,6 +714,7 @@ MCP_LOG_LEVEL              # debug|info|warn|error|silent
 PRG_SOURCE_TIMEOUT_MS      # timeout pojedynczego zadania zrodlowego
 PRG_MAX_DOWNLOAD_BYTES     # twardy limit rozmiaru pobrania
 PRG_SYNC_CONCURRENCY       # liczba rownoleglych pobran
+PRG_FRESHNESS_CHECK_MS     # minimalny odstep miedzy sprawdzeniami swiezosci zrodel
 ```
 
 Pliki lokalne:

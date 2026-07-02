@@ -2,6 +2,7 @@ export {
   classifyTextMatch,
   compareTextMatches,
   defaultTextMatchThresholds,
+  normalizePostalCodeSearchText,
   normalizePolishSearchText,
   toPolishFtsQuery,
 } from "./domain/address-search.js";

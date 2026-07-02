@@ -58,6 +58,12 @@ describe("P6 address tools", () => {
       addresses: [{ addressId: warszawaAddressId, buildingNumber: "12A", localityName: "Warszawa", streetName: "Żurawia" }],
     });
     await expect(searchAddresses(config, {
+      structured: { postalCode: "00-503" },
+      voivodeshipCodes: ["14"],
+    })).resolves.toMatchObject({
+      addresses: [{ addressId: warszawaAddressId, postalCode: "00503" }],
+    });
+    await expect(searchAddresses(config, {
       structured: { streetId: zurawiaStreetId },
     })).resolves.toMatchObject({
       addresses: [{ buildingNumber: "12A", streetId: zurawiaStreetId, voivodeshipCode: "14" }],

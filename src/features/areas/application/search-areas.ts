@@ -176,31 +176,36 @@ function readCurrentAreaSnapshots(config: PrgConfig, layerIds: readonly string[]
 
   const database = new Database(catalogPath, { fileMustExist: true, readonly: true });
   try {
+    installRequestedLayerTable(database, layerIds);
     return database.prepare(`
       select c.layer_id as layerId, c.snapshot_id as snapshotId
       from installed_coverage c
-      where c.layer_id in (
-        @layerId0, @layerId1, @layerId2, @layerId3, @layerId4, @layerId5, @layerId6, @layerId7, @layerId8, @layerId9,
-        @layerId10, @layerId11, @layerId12, @layerId13, @layerId14, @layerId15, @layerId16, @layerId17, @layerId18, @layerId19,
-        @layerId20, @layerId21, @layerId22, @layerId23, @layerId24, @layerId25, @layerId26, @layerId27, @layerId28, @layerId29,
-        @layerId30, @layerId31, @layerId32, @layerId33, @layerId34, @layerId35, @layerId36, @layerId37, @layerId38, @layerId39,
-        @layerId40, @layerId41, @layerId42, @layerId43, @layerId44, @layerId45, @layerId46, @layerId47, @layerId48, @layerId49,
-        @layerId50, @layerId51, @layerId52, @layerId53
-      )
+      join temp.requested_area_layers requested on requested.layer_id = c.layer_id
+      where 1 = 1
         and c.dataset_key = 'current:' || c.layer_id
         and c.archive_year = 0
         and c.scope_type = 'country'
         and c.scope_code = 'PL'
         and c.completeness = 'complete'
       order by c.layer_id asc
-    `).all(layerIdParameters(layerIds)) as AreaCurrentSnapshot[];
+    `).all() as AreaCurrentSnapshot[];
   } finally {
     database.close();
   }
 }
 
-function layerIdParameters(layerIds: readonly string[]): Record<string, string> {
-  return Object.fromEntries(Array.from({ length: 54 }, (_, index) => [`layerId${index}`, layerIds[index] ?? ""])) as Record<string, string>;
+function installRequestedLayerTable(database: Database.Database, layerIds: readonly string[]): void {
+  database.exec(`
+    create temp table if not exists requested_area_layers (
+      layer_id text primary key
+    );
+    delete from temp.requested_area_layers;
+  `);
+
+  const insert = database.prepare("insert into temp.requested_area_layers(layer_id) values (?)");
+  for (const layerId of layerIds) {
+    insert.run(layerId);
+  }
 }
 
 function categorySql(category: PrgLayerCategory | undefined): string {

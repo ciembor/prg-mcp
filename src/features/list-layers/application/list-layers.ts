@@ -30,11 +30,11 @@ export async function listLayers(config: PrgConfig): Promise<readonly ListedLaye
   const coverage = await readCoverage(config.dataDir);
   const counts = await readCounts(config.dataDir);
   return listPrgLayers().map((layer) => {
-    const installedScopes = coverage.get(layer.layerId) ?? [];
+    const installedScopes = coverage.scopes.get(layer.layerId) ?? [];
     const recordCount = counts.get(layer.layerId) ?? 0;
     return {
       ...layer,
-      available: installedScopes.length > 0 || recordCount > 0,
+      available: installedScopes.length > 0 || (!coverage.hasCatalogCoverage && recordCount > 0),
       installedScopes,
       recordCount,
       usage: usageByCategory[layer.category],
@@ -42,9 +42,14 @@ export async function listLayers(config: PrgConfig): Promise<readonly ListedLaye
   });
 }
 
-async function readCoverage(dataDir: string): Promise<ReadonlyMap<string, readonly string[]>> {
+type LayerCoverageIndex = {
+  readonly hasCatalogCoverage: boolean;
+  readonly scopes: ReadonlyMap<string, readonly string[]>;
+};
+
+async function readCoverage(dataDir: string): Promise<LayerCoverageIndex> {
   const path = join(dataDir, "catalog.sqlite");
-  if (!(await exists(path))) return new Map();
+  if (!(await exists(path))) return { hasCatalogCoverage: false, scopes: new Map() };
   const rows = readSafely(() => withReadonlyDatabase(path, (database) => database.prepare(
     `
       select distinct layer_id as layerId, scope_type as scopeType, scope_code as scopeCode
@@ -54,10 +59,11 @@ async function readCoverage(dataDir: string): Promise<ReadonlyMap<string, readon
         and archive_year = 0
       order by layer_id, scope_type, scope_code
     `,
-  ).all() as { layerId: string; scopeType: string; scopeCode: string }[])) ?? [];
+  ).all() as { layerId: string; scopeType: string; scopeCode: string }[]));
+  if (!rows) return { hasCatalogCoverage: false, scopes: new Map() };
   const result = new Map<string, string[]>();
   for (const row of rows) result.set(row.layerId, [...(result.get(row.layerId) ?? []), `${row.scopeType}:${row.scopeCode}`]);
-  return result;
+  return { hasCatalogCoverage: true, scopes: result };
 }
 
 async function readCounts(dataDir: string): Promise<ReadonlyMap<string, number>> {

@@ -119,7 +119,9 @@ describe("operational MCP tools", () => {
 
     const app = createApp(testConfig(dataDir));
     const layers = (await callTool(app, "list_layers", {})).structuredContent as { layers: Array<{ layerId: string; recordCount: number }> };
+    const status = (await callTool(app, "source_status", {})).structuredContent;
     expect(layers.layers.find((layer) => layer.layerId === "A03")).toMatchObject({ recordCount: 1 });
+    expect(status).toMatchObject({ installedLayerCount: 1 });
   });
 
   it("does not expose sync_data until a real synchronization runner is wired", async () => {

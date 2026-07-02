@@ -37,7 +37,9 @@ describe("address and street search", () => {
     expect(normalizePolishSearchText(" Ul. Żurawia 12 A ")).toBe("ulica zurawia 12a");
     expect(normalizePolishSearchText("al. Jana Pawła II 12 / 14")).toBe("aleja jana pawla ii 12/14");
     expect(normalizePolishSearchText("pl. Grzybowski")).toBe("plac grzybowski");
+    expect(normalizePolishSearchText("00-503")).toBe("00503");
     expect(toPolishFtsQuery("ul. Żurawia 6/12")).toBe("\"ulica\"* \"zurawia\"* \"6\"* \"12\"*");
+    expect(toPolishFtsQuery("Warszawa 00-503")).toBe("\"warszawa\"* \"00503\"*");
   });
 
   it("classifies exact, prefix, contains and fuzzy matches with separate thresholds", () => {
@@ -70,7 +72,7 @@ describe("address and street search", () => {
     });
 
     const results = searchAddresses(database, {
-      query: "Warszawa ulica Żurawia 6/12 00503",
+      query: "Warszawa ulica Żurawia 6/12 00-503",
       limit: 5,
     });
 

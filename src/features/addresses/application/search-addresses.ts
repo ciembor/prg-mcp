@@ -1,7 +1,13 @@
 import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled } from "../../../shared/data-result.js";
 import type { PrgVoivodeshipCode } from "../../persistence/index.js";
-import { compareAddressResults, normalizePolishSearchText, searchAddresses as searchAddressFts, type AddressSearchResult } from "../../search/index.js";
+import {
+  compareAddressResults,
+  normalizePolishSearchText,
+  normalizePostalCodeSearchText,
+  searchAddresses as searchAddressFts,
+  type AddressSearchResult,
+} from "../../search/index.js";
 import {
   AddressToolError,
   addressRecoveryAction,
@@ -148,7 +154,7 @@ function searchStructuredObjectIds(database: import("better-sqlite3").Database, 
         and (@localityName is null or normalizedText(locality_name) = @localityName)
         and (@streetName is null or normalizedText(street_name) = @streetName)
         and (@buildingNumber is null or normalizedText(building_number) = @buildingNumber)
-        and (@postalCode is null or postal_code = @postalCode)
+        and (@postalCode is null or normalizedText(postal_code) = @postalCode)
       order by locality_name collate nocase asc, street_name collate nocase asc, building_number collate nocase asc, object_id asc
       limit @limit
     `)
@@ -158,7 +164,7 @@ function searchStructuredObjectIds(database: import("better-sqlite3").Database, 
       localityId: query.localityId ?? null,
       localityName: normalizeStructuredText(query.localityName),
       municipalityCode: query.municipalityCode ?? null,
-      postalCode: query.postalCode ?? null,
+      postalCode: normalizeStructuredPostalCode(query.postalCode),
       streetId: query.streetId ?? null,
       streetName: normalizeStructuredText(query.streetName),
     }) as Array<{ object_id: string }>).map((row) => row.object_id);
@@ -166,6 +172,10 @@ function searchStructuredObjectIds(database: import("better-sqlite3").Database, 
 
 function normalizeStructuredText(value: string | undefined): string | null {
   return value === undefined ? null : normalizePolishSearchText(value);
+}
+
+function normalizeStructuredPostalCode(value: string | undefined): string | null {
+  return value === undefined ? null : normalizePostalCodeSearchText(value);
 }
 
 function readAddressesByObjectIds(database: import("better-sqlite3").Database, objectIds: readonly string[]): AddressRow[] {

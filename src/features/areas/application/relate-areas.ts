@@ -4,7 +4,7 @@ import type { PrgConfig } from "../../../runtime/config.js";
 import { assertDataInstalled, databaseTableHasRows } from "../../../shared/data-result.js";
 import { decodeWkb } from "../../spatial/index.js";
 import { geometriesIntersect } from "../../spatial/infrastructure/turf/geometry-predicates.js";
-import { getPrgLayer, listPrgLayers, type PrgLayerCategory } from "../../source-catalog/index.js";
+import { getPrgLayer, listPrgLayers, prgLayerCategories, type PrgLayerCategory } from "../../source-catalog/index.js";
 import { AreaToolError, assertValidOn, readAreaById, toAreaSummary, type AreaRow, type AreaSummary } from "./area-model.js";
 
 export type RelateAreasInput = {
@@ -149,7 +149,11 @@ function layerIdsForCategory(category: PrgLayerCategory | undefined): string | n
 }
 
 function validateAreaCategory(toolName: string, category: PrgLayerCategory | undefined): void {
-  if (category === "address") {
+  if (!category) {
+    return;
+  }
+
+  if (!(prgLayerCategories as readonly string[]).includes(category) || category === "address") {
     throw new AreaToolError("INVALID_INPUT", `${toolName} category must refer to PRG area layers.`);
   }
 }

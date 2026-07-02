@@ -36,7 +36,7 @@ export async function getSourceStatus(config: PrgConfig, checkRemote: boolean, p
   return {
     checkedRemote,
     coverage,
-    installedLayerCount: new Set(coverage.filter((item) => item.completeness === "complete").map((item) => item.layerId)).size,
+    installedLayerCount: new Set(coverage.filter(isCompleteCurrentCoverage).map((item) => item.layerId)).size,
     remoteReason: checkRemote && !probe ? "Remote source status probe is not configured in this build." : undefined,
     remoteStatus: remoteStatus(checkRemote, checkedRemote),
     sources,
@@ -81,6 +81,10 @@ async function readCoverage(catalogPath: string): Promise<readonly CoverageStatu
 function localSourceStates(coverage: readonly CoverageStatus[]): SourceStatusResult["sources"] {
   const keys = new Set(coverage.filter((item) => item.completeness === "complete").map((item) => item.datasetKey));
   return [...keys].sort().map((datasetKey) => ({ datasetKey, status: "unknown" as const }));
+}
+
+function isCompleteCurrentCoverage(item: CoverageStatus): boolean {
+  return item.completeness === "complete" && item.datasetKey === `current:${item.layerId}`;
 }
 
 async function exists(path: string): Promise<boolean> {

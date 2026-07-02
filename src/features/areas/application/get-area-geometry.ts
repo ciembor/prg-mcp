@@ -61,7 +61,8 @@ export function vertexCount(geometry: PrgGeometry): number {
 }
 
 function simplifyToLimit(geometry: PrgGeometry, tolerance: number, maxVertices: number): PrgGeometry {
-  let simplified = tolerance > 0 ? simplifyGeometry(validateGeoJsonGeometry(geometry), tolerance) : validateGeoJsonGeometry(geometry);
+  const validGeometry = validateGeoJsonGeometry(geometry);
+  let simplified = tolerance > 0 ? simplifyGeometry(validGeometry, tolerance) : validGeometry;
   let currentTolerance = tolerance;
 
   for (let attempt = 0; vertexCount(simplified) > maxVertices && attempt < 12; attempt += 1) {
@@ -69,12 +70,19 @@ function simplifyToLimit(geometry: PrgGeometry, tolerance: number, maxVertices: 
     simplified = simplifyGeometry(simplified, currentTolerance);
   }
 
-  simplified = validateGeoJsonGeometry(simplified);
   if (vertexCount(simplified) > maxVertices) {
     throw new AreaToolError("VERTEX_LIMIT_EXCEEDED", `Geometry has ${vertexCount(simplified)} vertices after simplification; limit is ${maxVertices}.`);
   }
 
-  return simplified;
+  try {
+    return validateGeoJsonGeometry(simplified);
+  } catch (error) {
+    if (error instanceof AreaToolError && error.code === "INVALID_INPUT" && tolerance > 0) {
+      throw new AreaToolError("VERTEX_LIMIT_EXCEEDED", `Geometry could not be simplified to a valid shape within limit ${maxVertices}.`);
+    }
+
+    throw error;
+  }
 }
 
 function simplifyGeometry(geometry: PrgGeometry, tolerance: number): PrgGeometry {
@@ -90,7 +98,7 @@ function simplifyGeometry(geometry: PrgGeometry, tolerance: number): PrgGeometry
 
   const simplified = simplify(feature as unknown as Parameters<typeof simplify>[0], { highQuality: true, tolerance }) as unknown as { geometry: PrgGeometry };
 
-  return validateGeoJsonGeometry(simplified.geometry);
+  return simplified.geometry;
 }
 
 function validateGeoJsonGeometry(geometry: PrgGeometry): PrgGeometry {

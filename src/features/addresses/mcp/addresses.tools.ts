@@ -5,7 +5,6 @@ import type { PrgConfig } from "../../../runtime/config.js";
 import { createDataResultMetadata, databaseTableHasRows } from "../../../shared/data-result.js";
 import { prgVoivodeshipCodes, type PrgVoivodeshipCode } from "../../persistence/index.js";
 import type { AddressSummary, StreetSummary } from "../application/address-model.js";
-import { decodeAddressId, decodeStreetId } from "../application/address-model.js";
 import { getAddress } from "../application/get-address.js";
 import { reverseAddress } from "../application/reverse-address.js";
 import { searchAddresses } from "../application/search-addresses.js";
@@ -106,12 +105,16 @@ export function createGetAddressTool(config: PrgConfig) {
   return defineZodTool({
     annotations: { readOnlyHint: true },
     description: "Returns one PRG address point with IIP identifier, coordinates, postal-code attribute and source provenance.",
-    handler: async ({ addressId }) => ({
-      structuredContent: {
-        address: toMutableAddressSummary(await getAddress(config, addressId)),
-        ...addressMetadata(config, "A07", [decodeAddressId(addressId).voivodeshipCode]),
-      },
-    }),
+    handler: async ({ addressId }) => {
+      const address = await getAddress(config, addressId);
+
+      return {
+        structuredContent: {
+          address: toMutableAddressSummary(address),
+          ...addressMetadata(config, "A07", [address.voivodeshipCode]),
+        },
+      };
+    },
     input: z.object({ addressId: z.string().min(1) }),
     name: "get_address",
     output: z.object({ address: addressSummarySchema }).extend(dataResultMetadataShape),
@@ -186,7 +189,7 @@ export function createGetStreetTool(config: PrgConfig) {
       return {
         structuredContent: {
           street: { ...toMutableStreetSummary(street), geometry: street.geometry },
-          ...addressMetadata(config, "A08", [decodeStreetId(streetId).voivodeshipCode]),
+          ...addressMetadata(config, "A08", [street.voivodeshipCode]),
         },
       };
     },

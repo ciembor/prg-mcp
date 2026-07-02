@@ -7,7 +7,6 @@ import { databaseTableHasRows } from "../../../shared/data-result.js";
 import { createDataResultMetadata } from "../../../shared/data-result.js";
 import { getPrgLayer, listPrgLayers, prgLayerCategories } from "../../source-catalog/index.js";
 import type { AreaSummary } from "../application/area-model.js";
-import { decodeAreaId } from "../application/area-model.js";
 import { getArea } from "../application/get-area.js";
 import { getAreaGeometry } from "../application/get-area-geometry.js";
 import { locatePoint } from "../application/locate-point.js";
@@ -108,7 +107,7 @@ export function createGetAreaGeometryTool(config: PrgConfig) {
     description: "Returns PRG area geometry as GeoJSON in EPSG:2180, with optional simplification and vertex limit.",
     handler: async (input) => {
       const result = await getAreaGeometry(config, input);
-      return { structuredContent: { ...result, ...areaMetadata(config, { layerId: decodeAreaId(input.areaId).layerId }) } };
+      return { structuredContent: { ...result, ...areaMetadata(config, { layerId: result.layerId }) } };
     },
     input: z.object({
       areaId: z.string().min(1),
@@ -136,7 +135,13 @@ export function createLocatePointTool(config: PrgConfig) {
     handler: async (input) => {
       const result = await locatePoint(config, input);
 
-      return { structuredContent: { matches: result.matches.map(toMutableAreaSummary), point: [...result.point] as [number, number], ...areaMetadata(config, input) } };
+      return {
+        structuredContent: {
+          matches: result.matches.map(toMutableAreaSummary),
+          point: [...result.point] as [number, number],
+          ...areaMetadata(config, { ...input, polygonOnly: true }),
+        },
+      };
     },
     input: z.object({
       category: areaCategorySchema.optional(),
@@ -189,17 +194,20 @@ export function createRelateAreasTool(config: PrgConfig) {
 
 const dataResultMetadataShape = dataResultMetadataSchema.shape;
 
-function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; readonly layerIds?: readonly string[]; readonly category?: string }) {
+function areaMetadata(
+  config: PrgConfig,
+  input: { readonly layerId?: string; readonly layerIds?: readonly string[]; readonly category?: string; readonly polygonOnly?: boolean },
+) {
   let layerIds: readonly string[];
 
   if (input.layerId) {
     const layer = getPrgLayer(input.layerId);
-    layerIds = layer?.sourceChannel === "wfs" ? [input.layerId] : [];
+    layerIds = isMetadataAreaLayer(layer, input.polygonOnly) ? [input.layerId] : [];
   } else if (input.layerIds && input.layerIds.length > 0) {
-    layerIds = input.layerIds.filter((layerId) => getPrgLayer(layerId)?.sourceChannel === "wfs");
+    layerIds = input.layerIds.filter((layerId) => isMetadataAreaLayer(getPrgLayer(layerId), input.polygonOnly));
   } else {
     layerIds = listPrgLayers()
-      .filter((layer) => layer.sourceChannel === "wfs" && (!input.category || layer.category === input.category))
+      .filter((layer) => isMetadataAreaLayer(layer, input.polygonOnly) && (!input.category || layer.category === input.category))
       .map((layer) => layer.layerId);
   }
 
@@ -213,6 +221,10 @@ function areaMetadata(config: PrgConfig, input: { readonly layerId?: string; rea
     layerIds,
     requestedScopes: ["country:PL"],
   });
+}
+
+function isMetadataAreaLayer(layer: ReturnType<typeof getPrgLayer>, polygonOnly: boolean | undefined): boolean {
+  return Boolean(layer?.sourceChannel === "wfs" && (!polygonOnly || layer.geometryType === "polygon"));
 }
 
 function fallbackAreaCoverage(config: PrgConfig, layerIds: readonly string[]): Array<{ readonly layerId: string; readonly scope: string }> {
